@@ -1,0 +1,36 @@
+import type { Metadata } from "next";
+import Link from "next/link";
+import { notFound, redirect } from "next/navigation";
+import { createClient } from "@/lib/supabase/server";
+import { getProfileWithProgress } from "@/server/auth/session";
+import { loadStation } from "@/server/station/orchestrator";
+import { StationClient } from "./station-client";
+
+export const metadata: Metadata = { title: "Station" };
+
+// The live station is deliberately calm: no XP, streaks or confetti until it's over.
+export default async function StationPage({ params }: PageProps<"/station/[id]">) {
+  const { id } = await params;
+  const { profile } = await getProfileWithProgress(`/station/${id}`);
+  if (!profile.onboarding_completed_at) redirect("/onboarding");
+  if (!/^[0-9a-f-]{36}$/i.test(id)) notFound();
+
+  const station = await loadStation(profile.id, id, await createClient());
+  if (!station) notFound();
+
+  return (
+    <div className="min-h-dvh bg-background">
+      <header className="border-b">
+        <div className="mx-auto flex h-14 max-w-3xl items-center justify-between gap-3 px-4">
+          <span className="truncate font-extrabold">{station.title}</span>
+          <Link href="/hub" className="shrink-0 text-sm font-bold text-muted-foreground hover:text-foreground">
+            Exit station
+          </Link>
+        </div>
+      </header>
+      <main className="mx-auto max-w-3xl px-4 py-5">
+        <StationClient station={station} />
+      </main>
+    </div>
+  );
+}

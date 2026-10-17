@@ -1,7 +1,8 @@
 import { expect, test } from "@playwright/test";
 import { admin, createTestUser, deleteTestUsers } from "./helpers";
 
-test.afterAll(deleteTestUsers);
+// Per test, not per file: the user list in helpers.ts is shared by every spec in the worker.
+test.afterEach(deleteTestUsers);
 
 test("signed-out visitors are sent to login with a safe next", async ({ page }) => {
   await page.goto("/hub");

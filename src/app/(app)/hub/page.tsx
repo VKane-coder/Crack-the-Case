@@ -9,8 +9,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Progress } from "@/components/ui/progress";
 import { createClient } from "@/lib/supabase/server";
 import { getProfileWithProgress } from "@/server/auth/session";
+import { patientAvailable } from "@/server/station/llm";
 import { levelProgress } from "@/server/gamification/levels";
 import { stationXp, totalXp } from "@/server/gamification/xp";
+import { StartCaseButton } from "./start-case-button";
 
 export const metadata: Metadata = { title: "Hub" };
 
@@ -128,9 +130,13 @@ export default async function HubPage() {
             </CardContent>
             <div className="flex items-center justify-between gap-3">
               <span className="text-sm font-bold text-xp">Up to +{maxStationXp(recommended.difficulty)} XP</span>
-              <Button variant="reward" size="lg" disabled title="Stations arrive in the next milestone">
-                Stations coming soon
-              </Button>
+              {patientAvailable() ? (
+                <StartCaseButton caseSlug={recommended.slug} />
+              ) : (
+                <Button variant="reward" size="lg" disabled title="The AI patient isn't configured on this server yet">
+                  Patients unavailable
+                </Button>
+              )}
             </div>
           </Card>
         )}
