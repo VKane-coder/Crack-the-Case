@@ -25,3 +25,22 @@ export async function deleteTestUsers() {
   const supabase = admin();
   await Promise.all(created.splice(0).map((id) => supabase.auth.admin.deleteUser(id)));
 }
+
+/** A confirmed user who has already finished onboarding (written with the service role). */
+export async function createOnboardedUser(specialties = ["general-practice"]) {
+  const user = await createTestUser();
+  const db = admin();
+  const { data: avatar } = await db.from("avatars").select("id").eq("slug", "koala-clerk").single();
+  const { error } = await db
+    .from("profiles")
+    .update({
+      display_name: "Station Tester",
+      avatar_id: avatar!.id,
+      exam_type: "school_osce",
+      target_specialties: specialties,
+      onboarding_completed_at: new Date().toISOString(),
+    })
+    .eq("id", user.id);
+  if (error) throw error;
+  return user;
+}

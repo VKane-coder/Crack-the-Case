@@ -13,9 +13,11 @@
     "seed:build": "tsx scripts/build-seed.ts",
     "db:test": "bash scripts/db-test.sh",
     "test:e2e": "playwright test",
-    "supabase:admin": "tsx scripts/supabase-admin.ts"
+    "supabase:admin": "tsx scripts/supabase-admin.ts",
+    "eval:patient": "tsx --conditions=react-server evals/patient-leak.ts"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.135.0",
     "@supabase/ssr": "^0.12.7",
     "@supabase/supabase-js": "^2.118.0",
     "canvas-confetti": "^1.9.4",

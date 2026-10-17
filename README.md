@@ -27,6 +27,7 @@ npm run dev                  # http://localhost:3000, design preview at /hub
 | `npm run test:e2e` | Playwright end-to-end tests against a real Supabase project (needs the env below) |
 | `npm run supabase:admin -- <status\|migrate\|seed\|auth-config> [--dry-run]` | Apply migrations, seed and auth settings to the hosted project via the Management API |
 | `npm run db:test` | Apply migrations + seed to a throwaway Postgres and run the RLS/integrity tests (`tests/db`) |
+| `npm run eval:patient` | Adversarial leak eval against the real patient agent (needs `ANTHROPIC_API_KEY`, costs a few cents) |
 
 ## Database
 
@@ -55,6 +56,17 @@ Students sign in with a single email that carries a **magic link and a 6-digit c
 3. Google: create an OAuth client in Google Cloud, enable the Google provider in the Supabase dashboard, then set `NEXT_PUBLIC_AUTH_GOOGLE_ENABLED=true`.
 4. Before real students use it: configure custom SMTP (e.g. Resend). Supabase's built-in mailer only reaches project team members and is rate-limited.
 
+## Stations
+
+A station runs reading time (60 s with the candidate brief), then a timed history with the AI patient, then the presentation and examiner phases (M4). In M2 the student types their questions; voice arrives in M3 on the same endpoint.
+
+- **Server-owned state.** `src/server/station/orchestrator.ts` moves a consultation through the state machine with the guarded `transition_consultation()` RPC and writes with the service role. The server deadline (plus 5 s grace) is the real limit; the browser clock only displays it. Starting a new case abandons any station in progress.
+- **Patient agent** (`src/server/agents/patient`). Sees only `case_versions.patient_view`, never the diagnosis or rubric; a lint rule blocks examiner and rubric imports. The system prompt is three cached layers (role contract, persona, patient script); the station clock and the facts revealed so far go in a per-turn system message after the cache breakpoint. Replies stream sentence by sentence with a leading `[emotion:x]` tag (stripped, drives the face) and a `mark_disclosed` tool call that records which script facts the student elicited.
+- **Models.** `claude-sonnet-5-5` at low effort with server-side refusal fallback; on an error or a slow first token the turn moves to `claude-haiku-5-5`. Every call is logged to `ai_calls` with tokens, cache reads and cost.
+- **Guardrail** (`src/server/agents/guardrails/patient.ts`). Every sentence is checked for the diagnosis and its synonyms, coaching and stepping out of role before the student sees it. A trip withdraws the reply, regenerates once with a correction, and otherwise falls back to a neutral in-role line.
+- **API.** `POST /api/consultations` · `/[id]/start-history` · `/[id]/patient-turn` (NDJSON stream; idempotent per `clientSeq`, so a resend replays the stored reply) · `/[id]/end-history`.
+- **Config.** Set `ANTHROPIC_API_KEY` (locally and in Vercel) for the real patient. Without it the hub shows "Patients unavailable". `PATIENT_LLM=fake` swaps in a scripted patient for e2e runs and local UI work; it is ignored on Vercel production.
+
 ## Case content
 
 Cases are authored as JSON in `content/cases/` and extend a rubric template in `content/rubrics/`. `npm run seed:build` validates each file (Zod), merges the rubric, checks the patient's view of the case for diagnosis leaks, and emits versioned, idempotent SQL. Editing a case creates a new immutable version, so past assessments keep pointing to the version they were scored against.
@@ -66,7 +78,7 @@ Cases are authored as JSON in `content/cases/` and extend a rubric template in `
 - [x] **M0 Foundations**: scaffold, design tokens, UI primitives, env validation, Supabase clients, XP/level rules + tests, CI, landing and hub design preview
 - [x] M1a Data: migrations, RLS, seed data (3 cases), case library pipeline, DB tests
 - [x] M1b Auth: email link + code and Google sign-in, session proxy, 4-step onboarding, real-data hub
-- [ ] M2 Text-mode station + Patient Agent
+- [x] M2 Text-mode station + Patient Agent: reading time, timed history with a streaming patient, personas, disclosure tracking, guardrail, model fallback, cost logging, leak eval
 - [ ] M3 Voice (Deepgram + ElevenLabs)
 - [ ] M4 Examiner & Assessment
 - [ ] M5 Gamification · M6 Hub & Analytics · M7 Admin & Content · M8 Hardening & Beta
