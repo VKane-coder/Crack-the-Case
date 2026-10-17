@@ -1,4 +1,6 @@
 import "server-only";
+import { claudeExaminerLlm } from "@/server/agents/examiner/claude-llm";
+import { fakeExaminerLlm, type ExaminerLlm } from "@/server/agents/examiner/llm";
 import { claudePatientLlm } from "@/server/agents/patient/claude-llm";
 import { fakePatientLlm } from "@/server/agents/patient/fake-llm";
 import type { PatientLlm } from "@/server/agents/patient/llm";
@@ -15,4 +17,9 @@ export function patientLlm(): PatientLlm {
 /** Whether a real or fake patient can answer right now (the Claude API needs a key). */
 export function patientAvailable() {
   return usingFakePatient() || Boolean(process.env.ANTHROPIC_API_KEY);
+}
+
+/** The examiner follows the patient: scripted in e2e runs, Claude otherwise. */
+export function examinerLlm(): ExaminerLlm {
+  return usingFakePatient() ? fakeExaminerLlm : claudeExaminerLlm;
 }

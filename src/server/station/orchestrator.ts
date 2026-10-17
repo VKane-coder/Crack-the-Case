@@ -37,7 +37,7 @@ export class StationError extends Error {
   }
 }
 
-type Consultation = {
+export type Consultation = {
   id: string;
   user_id: string;
   case_version_id: string;
@@ -48,9 +48,9 @@ type Consultation = {
   disclosed_fact_ids: string[];
 };
 
-type Db = SupabaseClient;
+export type Db = SupabaseClient;
 
-async function loadOwned(db: Db, userId: string, id: string): Promise<Consultation> {
+export async function loadOwned(db: Db, userId: string, id: string): Promise<Consultation> {
   const { data, error } = await db
     .from("consultations")
     .select("id, user_id, case_version_id, status, station_config, history_started_at, phase_deadline_at, disclosed_fact_ids")
@@ -62,7 +62,7 @@ async function loadOwned(db: Db, userId: string, id: string): Promise<Consultati
   return data as Consultation;
 }
 
-async function transition(db: Db, id: string, from: ConsultationStatus, to: ConsultationStatus): Promise<Consultation> {
+export async function transition(db: Db, id: string, from: ConsultationStatus, to: ConsultationStatus): Promise<Consultation> {
   const { data, error } = await db.rpc("transition_consultation", { p_id: id, p_from: from, p_to: to });
   if (error) {
     // 55000: the row had already moved on (a concurrent request won the race).
@@ -72,14 +72,18 @@ async function transition(db: Db, id: string, from: ConsultationStatus, to: Cons
   return data as Consultation;
 }
 
-async function caseVersion(db: Db, caseVersionId: string) {
+export async function caseVersion(db: Db, caseVersionId: string) {
   const { data, error } = await db
     .from("case_versions")
-    .select("content, patient_view")
+    .select("content, patient_view, rubric_version_id")
     .eq("id", caseVersionId)
     .single();
   if (error) throw error;
-  return { content: data.content as CaseContent, patientView: data.patient_view as PatientView };
+  return {
+    content: data.content as CaseContent,
+    patientView: data.patient_view as PatientView,
+    rubricVersionId: data.rubric_version_id as string,
+  };
 }
 
 /** Abandons any live station, then creates a new one for the case's current published version. */
@@ -121,10 +125,12 @@ export async function startConsultation(userId: string, caseSlug: string): Promi
   return created.id;
 }
 
-/** Throws unless the student's station is in its history phase (voice tokens are only for that). */
-export async function requireHistoryPhase(userId: string, id: string) {
+/** Throws unless the station is in a phase where the student speaks (voice tokens are only for those). */
+export async function requireSpeakingPhase(userId: string, id: string) {
   const station = await loadOwned(createAdminClient(), userId, id);
-  if (station.status !== "history") throw new StationError("wrong_phase", "The patient isn't taking questions right now.");
+  if (!["history", "presentation", "examiner_questions"].includes(station.status)) {
+    throw new StationError("wrong_phase", "The station isn't listening right now.");
+  }
 }
 
 /** Reading time is over: the clock starts and the patient says their opening line. */
@@ -165,23 +171,26 @@ async function compileTranscript(db: Db, id: string) {
   if (error) throw error;
 }
 
+export type Phase = "history" | "presentation" | "examiner_qa";
 type Row = { seq: number; role: "student" | "patient"; content: string; emotion: string | null; client_seq: number | null };
 
-async function historyMessages(db: Db, id: string): Promise<Row[]> {
+export async function phaseMessages(db: Db, id: string, phase: Phase): Promise<Row[]> {
   const { data, error } = await db
     .from("messages")
     .select("seq, role, content, emotion, client_seq")
     .eq("consultation_id", id)
-    .eq("phase", "history")
+    .eq("phase", phase)
     .order("seq");
   if (error) throw error;
   return data as Row[];
 }
 
-async function insertMessage(
+const historyMessages = (db: Db, id: string) => phaseMessages(db, id, "history");
+
+export async function insertMessage(
   db: Db,
   id: string,
-  m: { role: "student" | "patient"; content: string; emotion?: string; clientSeq?: number },
+  m: { role: "student" | "patient"; content: string; emotion?: string; clientSeq?: number; phase?: Phase },
 ): Promise<number> {
   // seq is unique per consultation; on a collision with a concurrent insert, take the next one.
   for (let tries = 0; tries < 5; tries++) {
@@ -190,7 +199,7 @@ async function insertMessage(
     const { error } = await db.from("messages").insert({
       consultation_id: id,
       seq,
-      phase: "history",
+      phase: m.phase ?? "history",
       role: m.role,
       content: m.content,
       emotion: m.emotion ?? null,
@@ -203,11 +212,6 @@ async function insertMessage(
   throw new StationError("turn_in_progress", "Too many concurrent messages.");
 }
 
-/**
- * Handles one student utterance: validates phase and clock, stores it, streams the patient's reply
- * through `emit`, then stores the reply, the facts it disclosed and the AI cost. Replaying the same
- * clientSeq returns the stored reply instead of generating a new one.
- */
 /** Everything the station page needs, read with the student's own RLS-limited session where possible. */
 export async function loadStation(userId: string, id: string, userDb: Db) {
   const { data: station, error } = await userDb
@@ -218,12 +222,12 @@ export async function loadStation(userId: string, id: string, userDb: Db) {
     .maybeSingle();
   if (error) throw error;
   if (!station) return null;
-  const { data: messages } = await userDb
-    .from("messages")
-    .select("seq, role, content, emotion, client_seq")
-    .eq("consultation_id", id)
-    .eq("phase", "history")
-    .order("seq");
+  const [{ data: messages }, { data: presentation }, { data: questions }] = await Promise.all([
+    userDb.from("messages").select("seq, role, content, emotion, client_seq").eq("consultation_id", id).eq("phase", "history").order("seq"),
+    userDb.from("messages").select("content").eq("consultation_id", id).eq("phase", "presentation").order("seq"),
+    // Students can read the question and their answer, never the examiner's rationale.
+    userDb.from("examiner_questions").select("ord, question, answered_at").eq("consultation_id", id).order("ord"),
+  ]);
   // Students can't read case_versions (it holds the diagnosis); pick out only pre-station fields.
   const { content, patientView } = await caseVersion(createAdminClient(), station.case_version_id);
   return {
@@ -231,12 +235,15 @@ export async function loadStation(userId: string, id: string, userDb: Db) {
     status: station.status as ConsultationStatus,
     deadline: station.phase_deadline_at as string | null,
     historySeconds: (station.station_config as Consultation["station_config"]).history_seconds ?? 300,
+    presentationSeconds: (station.station_config as Consultation["station_config"]).presentation_seconds ?? 180,
     historyStartedAt: station.history_started_at as string | null,
     historyEndedAt: station.history_ended_at as string | null,
     title: content.meta.title,
     brief: content.candidate_brief,
     patient: { name: patientView.name, age: patientView.age },
     messages: (messages ?? []) as Row[],
+    presentation: (presentation ?? []).map((m) => m.content as string),
+    questions: (questions ?? []).map((q) => ({ ord: q.ord as number, text: q.question as string, answered: q.answered_at !== null })),
   };
 }
 
@@ -248,6 +255,11 @@ export type TurnEvent = PatientEvent | AudioEvent | { type: "done" };
 /** Longest speech-to-text duration we'll log for one utterance (the value is client-reported). */
 const MAX_STT_SECONDS = 120;
 
+/**
+ * Handles one student utterance: validates phase and clock, stores it, streams the patient's reply
+ * through `emit`, then stores the reply, the facts it disclosed and the AI cost. Replaying the same
+ * clientSeq returns the stored reply instead of generating a new one.
+ */
 export async function patientTurn(
   userId: string,
   id: string,

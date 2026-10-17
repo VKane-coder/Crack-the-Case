@@ -22,6 +22,8 @@ export async function createTestUser() {
 }
 
 export async function deleteTestUsers() {
+  // E2E_KEEP_USERS=1 leaves test users (and their stations) in place for debugging a failure.
+  if (process.env.E2E_KEEP_USERS) return void created.splice(0);
   const supabase = admin();
   await Promise.all(created.splice(0).map((id) => supabase.auth.admin.deleteUser(id)));
 }
