@@ -21,7 +21,8 @@ export function UserMenu({ name, emoji }: { name: string; emoji: string }) {
           <DropdownMenu.Label className="px-3 py-2 text-sm font-extrabold">{name}</DropdownMenu.Label>
           <DropdownMenu.Separator className="my-1 h-px bg-border" />
           <form action="/auth/signout" method="post">
-            <DropdownMenu.Item asChild>
+            {/* Keep the menu open on select: closing unmounts the form before the browser submits it. */}
+            <DropdownMenu.Item asChild onSelect={(e) => e.preventDefault()}>
               <button
                 type="submit"
                 className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm font-bold outline-none data-[highlighted]:bg-muted"
