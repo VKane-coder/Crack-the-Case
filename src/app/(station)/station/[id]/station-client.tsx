@@ -300,6 +300,7 @@ export function StationClient({ station, voice }: { station: StationData; voice:
         {speech.error && (
           <p role="alert" className="rounded-xl bg-destructive/10 p-3 text-sm font-semibold text-destructive">
             {SPEECH_ERRORS[speech.error]}
+            {speech.detail && <span className="ml-1 font-normal opacity-70">({speech.detail})</span>}
           </p>
         )}
 

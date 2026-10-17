@@ -32,6 +32,9 @@ registerProcessor("pcm-tap", PcmTap);`;
 export function useSpeechInput(consultationId: string, enabled: boolean) {
   const [state, setState] = useState<SpeechState>("idle");
   const [error, setError] = useState<SpeechError | null>(null);
+  // Which step failed (e.g. "token 500", "socket 1006"), shown next to the message so a
+  // screenshot is enough to diagnose it. Never includes the token.
+  const [detail, setDetail] = useState<string | null>(null);
   const [caption, setCaption] = useState("");
 
   const socket = useRef<Socket | null>(null);
@@ -89,8 +92,13 @@ export function useSpeechInput(consultationId: string, enabled: boolean) {
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ consultationId }),
     });
-    const body = (await res.json().catch(() => null)) as { data?: TokenResponse } | null;
-    if (!body?.data) throw Object.assign(new Error("token"), { kind: res.status === 503 ? "unavailable" : "connection" });
+    const body = (await res.json().catch(() => null)) as { data?: TokenResponse; error?: { code?: string } } | null;
+    if (!body?.data) {
+      throw Object.assign(new Error("token"), {
+        kind: res.status === 503 ? "unavailable" : "connection",
+        detail: `token ${res.status}${body?.error?.code ? ` ${body.error.code}` : ""}`,
+      });
+    }
     return body.data;
   }, [consultationId]);
 
@@ -114,12 +122,18 @@ export function useSpeechInput(consultationId: string, enabled: boolean) {
       setCaption(assembler.current.live);
       if (done) finalized.current?.();
     });
-    s.on("close", () => {
+    let closeCode: number | undefined;
+    s.on("close", (event) => {
+      closeCode = (event as { code?: number } | undefined)?.code;
       if (keepalive.current) clearInterval(keepalive.current);
       socket.current = null;
     });
     s.connect();
-    await s.waitForOpen();
+    try {
+      await s.waitForOpen();
+    } catch {
+      throw Object.assign(new Error("socket"), { kind: "connection", detail: `socket ${closeCode ?? "failed"}` });
+    }
     socket.current = s;
     keepalive.current = setInterval(() => socket.current?.sendKeepAlive({ type: "KeepAlive" }), KEEPALIVE_MS);
   }, []);
@@ -128,6 +142,7 @@ export function useSpeechInput(consultationId: string, enabled: boolean) {
   const start = useCallback(() => {
     if (!enabled || starting.current) return;
     setError(null);
+    setDetail(null);
     assembler.current.reset();
     setCaption("");
     pressedAt.current = Date.now();
@@ -147,9 +162,10 @@ export function useSpeechInput(consultationId: string, enabled: boolean) {
         setState("listening");
         return true;
       } catch (err) {
-        const kind = (err as { kind?: SpeechError; name?: string }).kind;
-        const denied = (err as { name?: string }).name === "NotAllowedError";
+        const { kind, name, detail: step } = err as { kind?: SpeechError; name?: string; detail?: string };
+        const denied = name === "NotAllowedError";
         setError(denied ? "mic_denied" : (kind ?? "connection"));
+        setDetail(denied ? null : (step ?? name ?? "error"));
         setState("error");
         return false;
       }
@@ -193,5 +209,5 @@ export function useSpeechInput(consultationId: string, enabled: boolean) {
     [],
   );
 
-  return { state, error, caption, start, stop };
+  return { state, error, detail, caption, start, stop };
 }
