@@ -16,6 +16,11 @@ function friendlyAuthError(error: { status?: number; code?: string; message: str
     return "Whoa, that's a lot of emails! Give it a minute, then try again.";
   }
   if (error.code === "otp_expired") return "That code has expired. Ask for a fresh one and try again.";
+  if (error.code === "email_address_not_authorized") {
+    // Supabase's built-in mailer only reaches project team members until custom SMTP is set up.
+    return "We can't send sign-in emails to that address yet. Ask the Crack the Case team to set up email.";
+  }
+  if (error.code === "email_address_invalid") return "That email address can't receive mail. Check it and try again.";
   if (error.code === "otp_disabled" || error.code === "signup_disabled") return "Sign-ups are paused right now. Please try later.";
   return "Something went wrong on our side. Please try again.";
 }
