@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { publicEnv } from "@/lib/env";
+import { authSiteUrl } from "@/lib/site-url";
 import { safeNext } from "@/lib/safe-next";
 import { createClient } from "@/lib/supabase/server";
 
@@ -24,7 +24,7 @@ export async function sendEmailLink(input: { email: string; next?: string }): Pr
   const email = emailSchema.safeParse(input.email.trim().toLowerCase());
   if (!email.success) return { ok: false, error: "That email doesn't look quite right." };
 
-  const redirectTo = new URL("/auth/confirm", publicEnv().NEXT_PUBLIC_SITE_URL);
+  const redirectTo = new URL("/auth/confirm", authSiteUrl());
   redirectTo.searchParams.set("next", safeNext(input.next));
 
   const supabase = await createClient();
