@@ -1,0 +1,37 @@
+{
+  "slug": "history-station",
+  "name": "History-taking station (base)",
+  "station_type": "history",
+  "pass_mark": 55,
+  "domain_weights": {
+    "history": 0.25,
+    "communication": 0.2,
+    "differentials": 0.15,
+    "investigations": 0.1,
+    "management": 0.1,
+    "clinical_reasoning": 0.1,
+    "patient_safety": 0.1
+  },
+  "global_rating_descriptors": {
+    "fail": "Disorganised or unsafe. Misses most key information or red flags; communication damages rapport.",
+    "borderline": "Gathers some key information but with important omissions; reasoning is weak or poorly justified.",
+    "pass": "Safe, reasonably structured history covering the key features; sensible differential and plan.",
+    "good": "Fluent, patient-centred history; elicits red flags; well-justified differentials and appropriate plan.",
+    "excellent": "Polished and efficient. Patient-centred throughout, comprehensive yet focused, with intern-ready reasoning and safety-netting."
+  },
+  "items": [
+    { "key": "intro_identity", "domain": "communication", "label": "Introduces self and role; confirms patient identity", "max_points": 1 },
+    { "key": "open_question", "domain": "communication", "label": "Gains consent and opens with an open question", "max_points": 1 },
+    { "key": "active_listening", "domain": "communication", "label": "Listens without early interruption and picks up cues", "max_points": 2 },
+    { "key": "ice_explored", "domain": "communication", "label": "Explores the patient's ideas, concerns and expectations", "max_points": 2 },
+    { "key": "empathy", "domain": "communication", "label": "Acknowledges and responds to emotion with empathy", "max_points": 2 },
+    { "key": "plain_language", "domain": "communication", "label": "Uses plain language and avoids jargon", "max_points": 1 },
+    { "key": "summarises", "domain": "communication", "label": "Summarises back to the patient and invites corrections", "max_points": 1 },
+    { "key": "closes", "domain": "communication", "label": "Explains next steps and closes the consultation", "max_points": 1 },
+    { "key": "meds_allergies", "domain": "history", "label": "Takes a medication and allergy history", "max_points": 2 },
+    { "key": "structured_presentation", "domain": "clinical_reasoning", "label": "Presents in a clear structure: summary, positives, negatives, differentials, plan", "max_points": 2 },
+    { "key": "reasoning_links", "domain": "clinical_reasoning", "label": "Links findings to differentials and justifies their ranking", "max_points": 3 },
+    { "key": "urgency_recognised", "domain": "patient_safety", "label": "Recognises the urgency of the presentation", "max_points": 2, "is_critical": true },
+    { "key": "safety_netting", "domain": "patient_safety", "label": "Safety-nets appropriately", "max_points": 2 }
+  ]
+}

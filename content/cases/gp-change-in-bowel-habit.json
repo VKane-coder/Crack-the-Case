@@ -1,0 +1,138 @@
+{
+  "case": {
+    "meta": {
+      "slug": "gp-change-in-bowel-habit",
+      "title": "Something's not right down there",
+      "specialty": "general-practice",
+      "difficulty": 2,
+      "station": { "history_seconds": 300, "presentation_seconds": 180 },
+      "learning_objectives": [
+        "Take a sensitive lower GI history from an embarrassed patient",
+        "Identify red flags for colorectal cancer",
+        "Know that symptomatic patients need diagnostic colonoscopy, not an iFOBT screening test",
+        "Arrange timely referral consistent with the Optimal Care Pathway"
+      ],
+      "tags": ["bowel", "gastroenterology", "cancer", "sensitive history"],
+      "references": [
+        "Cancer Council Australia: Optimal care pathway for people with colorectal cancer (2nd ed.)",
+        "Cancer Council Australia: Clinical practice guidelines for the prevention, early detection and management of colorectal cancer",
+        "RACGP Guidelines for preventive activities in general practice (Red Book), 10th ed."
+      ],
+      "review_status": "pending_clinician_review"
+    },
+    "candidate_brief": "You are a GP registrar in a clinic in Ballarat, Victoria. Margaret Kelly, 64, has booked a standard appointment and told reception it's about 'tummy troubles'. Take a history, then present your findings to the examiner.",
+    "assessment_task": "Present your history, your differential diagnoses, and your plan for investigation and referral.",
+    "patient": {
+      "name": "Margaret Kelly",
+      "age": 64,
+      "sex": "female",
+      "pronouns": "she/her",
+      "occupation": "Retired primary school teacher",
+      "background": "Anglo-Australian, grew up in country Victoria. Lives with her husband Ron.",
+      "voice_profile": "au-female-60s-soft",
+      "persona": "embarrassed",
+      "persona_notes": "Polite and chatty about everything except her bowels. Uses euphemisms ('down there', 'my motions'). Hesitates and changes the subject when asked about blood or the toilet unless the student normalises the questions and is warm.",
+      "opening_statement": "Oh, it's probably nothing really. My tummy's just been a bit... unsettled. Ron made me come.",
+      "presenting_complaint": {
+        "site": "Lower left of the tummy, crampy at times",
+        "onset": "Gradual, over about three months",
+        "character": "Looser, more frequent motions; occasional crampy discomfort",
+        "timing": "Most days now, 3–4 times a day, previously once daily",
+        "associated": "Tiredness, some weight loss, blood mixed in with the stool"
+      },
+      "facts": [
+        { "id": "looser_frequent", "category": "HPC", "content": "My motions have been looser and I'm going three or four times a day. I used to be like clockwork, once a day.", "disclosure": "on_open_question" },
+        { "id": "duration_3_months", "category": "HPC", "content": "It's been about three months now, maybe a bit more.", "disclosure": "on_open_question", "is_red_flag": true },
+        { "id": "rectal_bleeding_mixed", "category": "HPC", "content": "Well... sometimes there's blood. Darkish red, sort of mixed in, not just on the paper.", "disclosure": "on_rapport", "is_red_flag": true },
+        { "id": "crampy_lif", "category": "HPC", "content": "I get a crampy ache down on the left side sometimes.", "disclosure": "on_direct_question" },
+        { "id": "weight_loss", "category": "HPC", "content": "My slacks are looser. I've lost about four kilos without trying.", "disclosure": "on_direct_question", "is_red_flag": true },
+        { "id": "fatigue", "category": "HPC", "content": "I'm tired all the time. I nod off in the afternoons, which isn't like me.", "disclosure": "on_direct_question", "is_red_flag": true },
+        { "id": "no_nocturnal_mucus", "category": "ROS", "content": "No, I don't have to get up at night for it, and I haven't noticed any mucus.", "disclosure": "on_direct_question" },
+        { "id": "no_fever_travel", "category": "ROS", "content": "No fevers, no trips overseas, and I haven't had any antibiotics.", "disclosure": "on_direct_question" },
+        { "id": "no_tenesmus", "category": "ROS", "content": "I don't think so, I feel like I've finished when I go.", "disclosure": "on_direct_question" },
+        { "id": "pmh_hypothyroid", "category": "PMH", "content": "I have an underactive thyroid.", "disclosure": "on_open_question" },
+        { "id": "dh_thyroxine", "category": "DH", "content": "I take thyroxine, 100 micrograms. The dose hasn't changed in years.", "disclosure": "on_direct_question" },
+        { "id": "dh_no_nsaids", "category": "DH", "content": "Just Panadol now and then. No anti-inflammatories.", "disclosure": "on_direct_question" },
+        { "id": "allergy_nkda", "category": "Allergy", "content": "No allergies that I know of.", "disclosure": "on_direct_question" },
+        { "id": "screening_not_done", "category": "PMH", "content": "I got one of those bowel test kits in the mail but I... well, I threw it out. It seemed a bit much.", "disclosure": "on_rapport" },
+        { "id": "fh_brother_polyps", "category": "FH", "content": "My brother had some polyps taken out of his bowel a few years ago.", "disclosure": "on_direct_question" },
+        { "id": "sh_alcohol_smoking", "category": "SH", "content": "I've never smoked. A glass or two of wine on the weekend.", "disclosure": "on_direct_question" },
+        { "id": "sh_diet_activity", "category": "SH", "content": "I eat pretty well, lots of veggies. I walk the dog most mornings.", "disclosure": "on_direct_question" },
+        { "id": "ice_idea_piles", "category": "ICE", "content": "I thought it might just be piles. My mother had terrible piles.", "disclosure": "on_rapport" },
+        { "id": "ice_concern", "category": "ICE", "content": "Ron's mum died of something in her bowel. I try not to think about it.", "disclosure": "on_rapport" },
+        { "id": "ice_expectation", "category": "ICE", "content": "I was hoping you could give me a cream or something.", "disclosure": "on_rapport" }
+      ],
+      "ice": {
+        "ideas": "Probably haemorrhoids ('piles')",
+        "concerns": "Quietly frightened it's something serious, like her mother-in-law's illness",
+        "expectations": "A cream; hopes to avoid embarrassing tests"
+      },
+      "behaviour_rules": [
+        "Only reveals the blood in her stool if asked directly AND the student has been warm or normalised the question",
+        "If the student is brisk or clinical, answers minimally and looks away",
+        "If the student mentions a camera test, asks nervously if it's really necessary"
+      ]
+    },
+    "clinical": {
+      "diagnosis": "Suspected colorectal cancer (likely left-sided) requiring urgent colonoscopy",
+      "diagnosis_synonyms": ["colorectal cancer", "bowel cancer", "colon cancer", "rectal cancer", "carcinoma", "malignancy", "tumour", "cancer"],
+      "differentials": [
+        { "dx": "Colorectal cancer", "likelihood": "leading", "discriminating_features": "Age over 50, persistent change in bowel habit over 6 weeks, rectal bleeding mixed with stool, weight loss, fatigue (possible iron deficiency)" },
+        { "dx": "Inflammatory bowel disease", "likelihood": "possible", "discriminating_features": "Bloody diarrhoea, nocturnal symptoms, mucus, younger onset. No nocturnal symptoms or mucus" },
+        { "dx": "Diverticular disease", "likelihood": "possible", "discriminating_features": "Left iliac fossa pain and bleeding are common, but weight loss and fatigue point elsewhere" },
+        { "dx": "Haemorrhoids", "likelihood": "possible", "discriminating_features": "Bright red blood on paper, not mixed. Does not explain weight loss" },
+        { "dx": "Thyroid over-replacement / hyperthyroidism", "likelihood": "possible", "discriminating_features": "Loose stools and weight loss, but no dose change; check TFTs" },
+        { "dx": "Coeliac disease", "likelihood": "possible", "discriminating_features": "Associated autoimmune thyroid disease; check serology" }
+      ],
+      "red_flags": [
+        { "fact_id": "duration_3_months", "why": "Change in bowel habit for more than 6 weeks over age 50" },
+        { "fact_id": "rectal_bleeding_mixed", "why": "Blood mixed with stool suggests a colonic source" },
+        { "fact_id": "weight_loss", "why": "Unintentional weight loss is a cancer red flag" },
+        { "fact_id": "fatigue", "why": "Possible iron deficiency anaemia from chronic blood loss" }
+      ],
+      "expected_investigations": [
+        "Abdominal examination and digital rectal examination",
+        "FBC and iron studies (iron deficiency anaemia)",
+        "UEC, LFT, CRP",
+        "TFTs and coeliac serology",
+        "Urgent referral for diagnostic colonoscopy. Do NOT use an iFOBT screening kit for a symptomatic patient"
+      ],
+      "expected_management": [
+        "Urgent referral to gastroenterology / colorectal surgery for colonoscopy (Optimal Care Pathway timeframe)",
+        "Explain the reason for referral honestly and sensitively, without false reassurance",
+        "Arrange follow-up to discuss results and provide written information",
+        "Discuss implications of her brother's polyps for family screening"
+      ],
+      "safety_netting": [
+        "Return or go to ED if heavy bleeding, severe abdominal pain, vomiting or inability to open bowels",
+        "Book a follow-up appointment rather than waiting to be contacted"
+      ]
+    }
+  },
+  "rubric": {
+    "extends": "history-station",
+    "examiner_question_bank": [
+      { "question": "She asks whether she can just do the bowel screening kit instead. What would you tell her?", "targets": ["inv_colonoscopy"] },
+      { "question": "Which features in her history worry you the most, and why?", "targets": ["red_flags_elicited"] },
+      { "question": "What would you expect to find on her full blood count and iron studies?", "targets": ["inv_bloods"] },
+      { "question": "How could her thyroid condition be relevant here?", "targets": ["ddx_broad"] }
+    ],
+    "items": [
+      { "key": "bowel_habit", "domain": "history", "label": "Characterises the change in bowel habit and its duration", "max_points": 3, "linked_fact_ids": ["looser_frequent", "duration_3_months"] },
+      { "key": "red_flags_elicited", "domain": "history", "label": "Elicits rectal bleeding, weight loss and fatigue", "max_points": 4, "linked_fact_ids": ["rectal_bleeding_mixed", "weight_loss", "fatigue"], "is_critical": true },
+      { "key": "ibd_infective_screen", "domain": "history", "label": "Screens for IBD and infective features (nocturnal symptoms, mucus, fever, travel, antibiotics)", "max_points": 2, "linked_fact_ids": ["no_nocturnal_mucus", "no_fever_travel"] },
+      { "key": "meds_allergies", "domain": "history", "label": "Takes a medication and allergy history, including the thyroxine dose", "max_points": 2, "linked_fact_ids": ["dh_thyroxine", "dh_no_nsaids", "allergy_nkda"] },
+      { "key": "fh_screening", "domain": "history", "label": "Asks about family history and previous bowel screening", "max_points": 2, "linked_fact_ids": ["fh_brother_polyps", "screening_not_done"] },
+      { "key": "sensitive_approach", "domain": "communication", "label": "Normalises sensitive questions and puts the patient at ease", "max_points": 2 },
+      { "key": "ice_explored", "domain": "communication", "label": "Explores her belief it's piles, her fear, and her hope for a cream", "max_points": 2, "linked_fact_ids": ["ice_idea_piles", "ice_concern", "ice_expectation"] },
+      { "key": "ddx_leading", "domain": "differentials", "label": "Gives colorectal cancer as the diagnosis to exclude first", "max_points": 3, "is_critical": true },
+      { "key": "ddx_broad", "domain": "differentials", "label": "Offers sensible alternatives (IBD, diverticular disease, thyroid, coeliac)", "max_points": 2 },
+      { "key": "inv_exam_dre", "domain": "investigations", "label": "Plans abdominal examination and DRE", "max_points": 1 },
+      { "key": "inv_bloods", "domain": "investigations", "label": "Requests FBC, iron studies, and relevant bloods (TFT, coeliac, CRP)", "max_points": 2 },
+      { "key": "inv_colonoscopy", "domain": "investigations", "label": "Refers for colonoscopy rather than iFOBT screening", "max_points": 2, "is_critical": true },
+      { "key": "mx_referral", "domain": "management", "label": "Makes an urgent specialist referral within recommended timeframes", "max_points": 3 },
+      { "key": "mx_honest_explanation", "domain": "management", "label": "Explains the need for tests honestly without false reassurance", "max_points": 2 },
+      { "key": "urgency_recognised", "domain": "patient_safety", "label": "Does not dismiss symptoms as haemorrhoids", "max_points": 2, "is_critical": true }
+    ]
+  }
+}
