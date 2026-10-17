@@ -1,0 +1,45 @@
+<!-- Magic link + 6-digit code. Uses token_hash so the link works even if it opens in a different browser. -->
+<!doctype html>
+<html lang="en-AU">
+  <body style="margin:0;padding:0;background:#f8faff;font-family:'Nunito','Segoe UI',Arial,sans-serif;color:#1e2340;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="padding:32px 16px;">
+      <tr>
+        <td align="center">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;background:#ffffff;border-radius:24px;padding:32px;border:1px solid #e3e8f4;">
+            <tr>
+              <td align="center" style="font-size:22px;font-weight:900;">Crack the <span style="color:#8b5cf6;">Case</span></td>
+            </tr>
+            <tr>
+              <td align="center" style="padding:24px 0 8px;font-size:40px;">🩺</td>
+            </tr>
+            <tr>
+              <td align="center" style="font-size:24px;font-weight:900;">Your patient is waiting!</td>
+            </tr>
+            <tr>
+              <td align="center" style="padding:8px 0 24px;font-size:16px;color:#646b8a;">Tap the button to sign in. No password needed.</td>
+            </tr>
+            <tr>
+              <td align="center">
+                <a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email&redirect_to={{ .RedirectTo }}"
+                   style="display:inline-block;background:linear-gradient(90deg,#8b5cf6,#5b8def);background-color:#7a74f2;color:#ffffff;text-decoration:none;font-weight:800;font-size:16px;padding:14px 28px;border-radius:16px;">
+                  Sign in to Crack the Case
+                </a>
+              </td>
+            </tr>
+            <tr>
+              <td align="center" style="padding:28px 0 8px;font-size:14px;color:#646b8a;">Or enter this code in the app:</td>
+            </tr>
+            <tr>
+              <td align="center" style="font-size:32px;font-weight:900;letter-spacing:8px;color:#1e2340;">{{ .Token }}</td>
+            </tr>
+            <tr>
+              <td align="center" style="padding-top:28px;font-size:12px;color:#8a90ad;">
+                This link and code expire in 1 hour. If you didn't ask to sign in, you can safely ignore this email.
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>

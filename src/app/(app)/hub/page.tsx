@@ -1,108 +1,174 @@
 import type { Metadata } from "next";
-import { Award, Brain, Clock, HeartHandshake, Search, ShieldAlert, Target } from "lucide-react";
-import { BadgeMedal } from "@/components/game/badge-medal";
+import { Award, Clock, Target, icons, type LucideIcon } from "lucide-react";
+import { BadgeMedal, type BadgeTier } from "@/components/game/badge-medal";
 import { StreakFlame } from "@/components/game/streak-flame";
 import { XpBar } from "@/components/game/xp-bar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
+import { createClient } from "@/lib/supabase/server";
+import { getProfileWithProgress } from "@/server/auth/session";
 import { levelProgress } from "@/server/gamification/levels";
+import { stationXp, totalXp } from "@/server/gamification/xp";
 
 export const metadata: Metadata = { title: "Hub" };
 
-// M0 design preview. Replaced by GET /api/me/dashboard once auth and data land in M1/M6.
-const preview = {
-  name: "Alex",
-  totalXp: 1340,
-  streak: 5,
-  activeToday: false,
-  dailyGoal: { done: 0, target: 1 },
-  recommended: {
-    title: "Chest pain in the arvo",
-    specialty: "Emergency",
-    difficulty: 3,
-    minutes: 8,
-    persona: "Anxious",
-    xp: 175,
-  },
+const PERSONA_LABEL: Record<string, string> = {
+  cooperative: "Cooperative",
+  reserved: "Reserved",
+  anxious: "Anxious",
+  angry: "Frustrated",
+  distracted: "Distracted",
+  embarrassed: "Embarrassed",
 };
 
-export default function HubPage() {
-  const progress = levelProgress(preview.totalXp);
-  const goalPct = Math.round((preview.dailyGoal.done / preview.dailyGoal.target) * 100);
+function iconFor(name: string): LucideIcon {
+  const pascal = name.replace(/(^|-)([a-z0-9])/g, (_, __, c: string) => c.toUpperCase()) as keyof typeof icons;
+  return icons[pascal] ?? Award;
+}
+
+/** Completion + a perfect score, before streak/first-of-day bonuses. */
+function maxStationXp(difficulty: number) {
+  const d = Math.min(5, Math.max(1, difficulty)) as 1 | 2 | 3 | 4 | 5;
+  return totalXp(stationXp({ difficulty: d, overallPct: 100, previousBestPct: null, isFirstStationToday: false, streak: 0 }));
+}
+
+/** YYYY-MM-DD for "now" in the student's timezone (streak days follow local time). */
+function localDate(timeZone: string) {
+  return new Intl.DateTimeFormat("en-CA", { timeZone }).format(new Date());
+}
+
+export default async function HubPage() {
+  const { profile, progress } = await getProfileWithProgress("/hub");
+  const supabase = await createClient();
+  const today = localDate(profile.timezone);
+
+  const [activity, preferred, anyCase, badges, earned] = await Promise.all([
+    supabase.from("daily_activity").select("consultations").eq("user_id", profile.id).eq("activity_date", today).maybeSingle(),
+    profile.target_specialties.length
+      ? supabase
+          .from("v_case_catalog")
+          .select("slug, title, difficulty, persona, specialty_name, history_seconds, presentation_seconds")
+          .in("specialty_slug", profile.target_specialties)
+          .order("difficulty")
+          .limit(1)
+          .maybeSingle()
+      : Promise.resolve({ data: null }),
+    supabase
+      .from("v_case_catalog")
+      .select("slug, title, difficulty, persona, specialty_name, history_seconds, presentation_seconds")
+      .order("difficulty")
+      .limit(1)
+      .maybeSingle(),
+    supabase.from("badges").select("id, slug, name, tier, icon, description").order("sort_order"),
+    supabase.from("user_badges").select("badge_id").eq("user_id", profile.id),
+  ]);
+
+  const name = profile.display_name ?? "there";
+  const xp = levelProgress(progress.total_xp);
+  const doneToday = activity.data?.consultations ?? 0;
+  const target = profile.daily_goal_cases;
+  const goalPct = Math.min(100, Math.round((doneToday / target) * 100));
+  const activeToday = progress.last_active_date === today;
+  const recommended = preferred.data ?? anyCase.data;
+  const earnedIds = new Set((earned.data ?? []).map((b) => b.badge_id));
+  const allBadges = badges.data ?? [];
+  const shelf = [...allBadges.filter((b) => earnedIds.has(b.id)), ...allBadges.filter((b) => !earnedIds.has(b.id))].slice(0, 6);
+  const nextBadge = allBadges.find((b) => !earnedIds.has(b.id));
 
   return (
     <div className="flex flex-col gap-5">
-      <div className="flex items-center justify-between gap-2">
-        <div>
-          <h1 className="text-2xl font-black sm:text-3xl">G&apos;day, {preview.name}! 👋</h1>
-          <p className="text-muted-foreground">Your next patient is in the waiting room.</p>
-        </div>
-        <Badge variant="outline" className="hidden sm:inline-flex">Design preview</Badge>
+      <div>
+        <h1 className="text-2xl font-black sm:text-3xl">G&apos;day, {name}! 👋</h1>
+        <p className="text-muted-foreground">
+          {progress.total_consultations === 0
+            ? "Your first patient is in the waiting room."
+            : "Ready for your next patient?"}
+        </p>
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">
         <Card>
-          <StreakFlame days={preview.streak} activeToday={preview.activeToday} />
+          <StreakFlame days={progress.current_streak} activeToday={activeToday} />
           <p className="text-sm text-muted-foreground">
-            {preview.activeToday ? "Streak safe for today. Legend!" : "Finish one case today to keep the flame alive."}
+            {activeToday
+              ? "Streak safe for today. Legend!"
+              : progress.current_streak > 0
+                ? "Finish one case today to keep the flame alive."
+                : "Crack a case today to light your first flame."}
           </p>
         </Card>
-
         <Card className="md:col-span-2">
-          <XpBar progress={progress} />
+          <XpBar progress={xp} />
         </Card>
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">
-        <Card className="md:col-span-2 overflow-hidden border-brand-purple/30 bg-gradient-to-br from-card to-brand-purple/5">
-          <CardHeader>
-            <span className="flex items-center gap-1.5 text-xs font-extrabold tracking-wide text-brand-purple uppercase">
-              <Target className="size-3.5" /> Recommended next challenge
-            </span>
-            <CardTitle className="text-xl">{preview.recommended.title}</CardTitle>
-            <CardDescription>Picked to work on your weakest skill: red flag screening.</CardDescription>
-          </CardHeader>
-          <CardContent className="flex flex-wrap gap-2">
-            <Badge variant="teal">{preview.recommended.specialty}</Badge>
-            <Badge variant="purple">Difficulty {preview.recommended.difficulty}/5</Badge>
-            <Badge variant="coral">{preview.recommended.persona} patient</Badge>
-            <Badge variant="outline">
-              <Clock /> {preview.recommended.minutes} min
-            </Badge>
-          </CardContent>
-          <div className="flex items-center justify-between gap-3">
-            <span className="text-sm font-bold text-xp">Up to +{preview.recommended.xp} XP</span>
-            <Button variant="reward" size="lg" disabled title="Stations arrive in M2">
-              Start station
-            </Button>
-          </div>
-        </Card>
+        {recommended && (
+          <Card className="overflow-hidden border-brand-purple/30 bg-gradient-to-br from-card to-brand-purple/5 md:col-span-2">
+            <CardHeader>
+              <span className="flex items-center gap-1.5 text-xs font-extrabold tracking-wide text-brand-purple uppercase">
+                <Target className="size-3.5" /> Recommended next challenge
+              </span>
+              <CardTitle className="text-xl">{recommended.title}</CardTitle>
+              <CardDescription>
+                {progress.total_consultations === 0
+                  ? "A great first case from your chosen specialties."
+                  : "Picked from your chosen specialties."}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="flex flex-wrap gap-2">
+              <Badge variant="teal">{recommended.specialty_name}</Badge>
+              <Badge variant="purple">Difficulty {recommended.difficulty}/5</Badge>
+              {recommended.persona && <Badge variant="coral">{PERSONA_LABEL[recommended.persona] ?? recommended.persona} patient</Badge>}
+              <Badge variant="outline">
+                <Clock /> {Math.round((recommended.history_seconds + recommended.presentation_seconds) / 60)} min
+              </Badge>
+            </CardContent>
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-sm font-bold text-xp">Up to +{maxStationXp(recommended.difficulty)} XP</span>
+              <Button variant="reward" size="lg" disabled title="Stations arrive in the next milestone">
+                Stations coming soon
+              </Button>
+            </div>
+          </Card>
+        )}
 
         <Card>
           <CardHeader>
             <CardTitle>Today&apos;s goal</CardTitle>
             <CardDescription>
-              {preview.dailyGoal.done} of {preview.dailyGoal.target} case{preview.dailyGoal.target > 1 && "s"} done
+              {Math.min(doneToday, target)} of {target} case{target > 1 && "s"} done
             </CardDescription>
           </CardHeader>
           <Progress value={goalPct} indicatorClassName="bg-brand-teal" aria-label="Daily goal progress" />
-          <p className="text-sm text-muted-foreground">Smash it for +30 bonus XP.</p>
+          <p className="text-sm text-muted-foreground">
+            {goalPct >= 100 ? "Goal smashed! Bonus XP banked. 🎯" : "Smash it for +30 bonus XP."}
+          </p>
         </Card>
       </div>
 
       <Card>
         <CardHeader>
           <CardTitle>Trophy cabinet</CardTitle>
-          <CardDescription>2 badges collected. Red Flag Hunter is next: catch every red flag in 5 stations.</CardDescription>
+          <CardDescription>
+            {earnedIds.size === 0
+              ? "Your first badge is one patient away."
+              : `${earnedIds.size} badge${earnedIds.size === 1 ? "" : "s"} collected.`}
+            {nextBadge && earnedIds.size > 0 && ` Next up: ${nextBadge.name}.`}
+          </CardDescription>
         </CardHeader>
         <div className="flex flex-wrap gap-3">
-          <BadgeMedal name="First History" tier="bronze" icon={Search} />
-          <BadgeMedal name="Rapport Builder" tier="silver" icon={HeartHandshake} />
-          <BadgeMedal name="Red Flag Hunter" tier="gold" icon={ShieldAlert} locked />
-          <BadgeMedal name="Diagnostic Detective" tier="emerald" icon={Brain} locked />
-          <BadgeMedal name="7 Day Hero" tier="gold" icon={Award} locked />
+          {shelf.map((b) => (
+            <BadgeMedal
+              key={b.id}
+              name={b.name}
+              tier={b.tier as BadgeTier}
+              icon={iconFor(b.icon)}
+              locked={!earnedIds.has(b.id)}
+            />
+          ))}
         </div>
       </Card>
     </div>
