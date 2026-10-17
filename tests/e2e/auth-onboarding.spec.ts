@@ -94,13 +94,13 @@ test("a wrong code shows a friendly error", async ({ page }) => {
   await page.getByRole("button", { name: "I already have a code" }).click();
   await page.getByLabel("6-digit code").fill(user.otp === "000000" ? "111111" : "000000");
   await page.getByRole("button", { name: "Let's go" }).click();
-  await expect(page.getByRole("alert")).toContainText("That code didn't work");
+  await expect(page.getByRole("main").getByRole("alert")).toContainText("That code didn't work");
 });
 
 test("expired links land on login with a supportive message", async ({ page }) => {
   await page.goto("/auth/confirm?token_hash=not-a-real-token&type=email&next=/hub");
   await expect(page).toHaveURL(/\/login\?error=link_expired/);
-  await expect(page.getByRole("alert")).toContainText("gone a bit stale");
+  await expect(page.getByRole("main").getByRole("alert")).toContainText("gone a bit stale");
 });
 
 test("Google sign-in starts an OAuth redirect", async ({ page }) => {

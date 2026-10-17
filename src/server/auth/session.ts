@@ -24,7 +24,7 @@ async function loadProfile(userId: string) {
     supabase
       .from("profiles")
       .select(
-        "id, display_name, role, exam_type, exam_date, target_specialties, daily_goal_cases, weekly_goal_cases, timezone, onboarding_completed_at, avatar:avatars(id, slug, name, emoji)",
+        "id, display_name, role, exam_type, exam_date, target_specialties, daily_goal_cases, weekly_goal_cases, timezone, onboarding_completed_at, avatar:avatars!profiles_avatar_id_fkey(id, slug, name, emoji)",
       )
       .eq("id", userId)
       .single(),
