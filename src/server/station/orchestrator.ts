@@ -5,9 +5,9 @@ import { PATIENT_PROMPT_VERSION, type ChatTurn, type Emotion, type PatientEvent 
 import { costUsd } from "@/server/agents/shared/models";
 import { leakTerms, type PatientView } from "@/server/cases/projector";
 import type { CaseContent } from "@/server/cases/schema";
-import { sttUsdPerMinute, ttsAvailable, ttsUsdPer1kChars, voiceFake, voiceIdFor } from "@/server/voice/config";
-import { elevenLabsSynthesize, fakeSynthesize } from "@/server/voice/elevenlabs";
-import { TtsPipeline, type AudioEvent } from "@/server/voice/tts-pipeline";
+import { sttUsdPerMinute, ttsAvailable, ttsUsdPer1kChars, voiceFake } from "@/server/voice/config";
+import { elevenLabsSynthesize, fakeSynthesize, resolveVoiceId } from "@/server/voice/elevenlabs";
+import { TtsPipeline, type AudioEvent, type Synthesize } from "@/server/voice/tts-pipeline";
 import { patientLlm } from "./llm";
 import { runPatientTurn } from "./patient-turn";
 
@@ -236,7 +236,6 @@ export async function loadStation(userId: string, id: string, userDb: Db) {
     title: content.meta.title,
     brief: content.candidate_brief,
     patient: { name: patientView.name, age: patientView.age },
-    hasVoice: voiceIdFor(content.patient.voice_profile) !== null,
     messages: (messages ?? []) as Row[],
   };
 }
@@ -298,8 +297,17 @@ export async function patientTurn(
   const elapsed = station.history_started_at ? (now - Date.parse(station.history_started_at)) / 1000 : 0;
 
   // Voice out: each sentence that passes the guardrail is synthesised while the next is generated.
-  const voiceId = input.voice && ttsAvailable() ? voiceIdFor(content.patient.voice_profile) : null;
-  const tts = voiceId ? new TtsPipeline(voiceFake() ? fakeSynthesize() : elevenLabsSynthesize(voiceId), emit) : null;
+  // The voice lookup (first turn on a fresh server only) runs alongside generation, not before it.
+  const voiceId = input.voice && ttsAvailable() && !voiceFake() ? resolveVoiceId(content.patient.voice_profile) : null;
+  const synthesize: Synthesize | null = voiceFake()
+    ? input.voice ? fakeSynthesize() : null
+    : voiceId &&
+      (async (text, opts, sig) => {
+        const id = await voiceId;
+        if (!id) throw new Error("no ElevenLabs voice available");
+        return elevenLabsSynthesize(id)(text, opts, sig);
+      });
+  const tts = synthesize ? new TtsPipeline(synthesize, emit) : null;
   let emotion: Emotion = "neutral";
   const turnEmit = (e: PatientEvent) => {
     emit(e);

@@ -30,7 +30,7 @@ export default async function StationPage({ params }: PageProps<"/station/[id]">
         </div>
       </header>
       <main className="mx-auto max-w-3xl px-4 py-5">
-        <StationClient station={station} voice={{ input: sttAvailable(), output: ttsAvailable() && station.hasVoice }} />
+        <StationClient station={station} voice={{ input: sttAvailable(), output: ttsAvailable() }} />
       </main>
     </div>
   );

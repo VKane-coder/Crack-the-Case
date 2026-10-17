@@ -1,7 +1,9 @@
 import "server-only";
 import { ElevenLabsClient } from "@elevenlabs/elevenlabs-js";
 import { requireServerEnv } from "@/lib/env.server";
+import { voiceIdFor } from "./config";
 import { voiceSettingsFor } from "./emotion-voice";
+import { pickVoice } from "./pick-voice";
 import type { Synthesize } from "./tts-pipeline";
 
 // Text-to-speech for patient sentences. Flash v2.5 is ElevenLabs' low-latency model; 64 kbps MP3
@@ -28,6 +30,34 @@ async function collect(stream: ReadableStream<Uint8Array>): Promise<Uint8Array> 
     offset += c.length;
   }
   return out;
+}
+
+const picked = new Map<string, Promise<string | null>>();
+
+/**
+ * The voice for a case's voice_profile: ELEVENLABS_VOICE_MAP / ELEVENLABS_DEFAULT_VOICE_ID when set,
+ * otherwise the best match on the account (Australian accent, gender, age), chosen once per server.
+ */
+export function resolveVoiceId(profile: string): Promise<string | null> {
+  const fixed = voiceIdFor(profile);
+  if (fixed) return Promise.resolve(fixed);
+  let p = picked.get(profile);
+  if (!p) {
+    p = elevenlabs()
+      .voices.search({ pageSize: 100 }, { maxRetries: 1, timeoutInSeconds: 10 })
+      .then((res) => {
+        const voice = pickVoice(res.voices, profile);
+        console.info("voice auto-picked", { profile, voice: voice?.name, id: voice?.voiceId, labels: voice?.labels });
+        return voice?.voiceId ?? null;
+      })
+      .catch((err) => {
+        picked.delete(profile); // try again next turn
+        console.error("voice lookup failed", { message: err instanceof Error ? err.message : String(err) });
+        return null;
+      });
+    picked.set(profile, p);
+  }
+  return p;
 }
 
 export function elevenLabsSynthesize(voiceId: string): Synthesize {
