@@ -4,6 +4,7 @@ import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getProfileWithProgress } from "@/server/auth/session";
 import { loadStation } from "@/server/station/orchestrator";
+import { sttAvailable, ttsAvailable } from "@/server/voice/config";
 import { StationClient } from "./station-client";
 
 export const metadata: Metadata = { title: "Station" };
@@ -29,7 +30,7 @@ export default async function StationPage({ params }: PageProps<"/station/[id]">
         </div>
       </header>
       <main className="mx-auto max-w-3xl px-4 py-5">
-        <StationClient station={station} />
+        <StationClient station={station} voice={{ input: sttAvailable(), output: ttsAvailable() && station.hasVoice }} />
       </main>
     </div>
   );

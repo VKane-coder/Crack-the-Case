@@ -21,5 +21,6 @@ export type PatientStreamEvent =
   | { type: "emotion"; emotion: string }
   | { type: "text"; text: string }
   | { type: "reset" }
+  | { type: "audio"; index: number; mime: string; data: string }
   | { type: "done" }
   | { type: "error"; code: string; message: string };

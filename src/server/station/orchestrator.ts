@@ -1,10 +1,13 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { PATIENT_PROMPT_VERSION, type ChatTurn, type PatientEvent } from "@/server/agents/patient";
+import { PATIENT_PROMPT_VERSION, type ChatTurn, type Emotion, type PatientEvent } from "@/server/agents/patient";
 import { costUsd } from "@/server/agents/shared/models";
 import { leakTerms, type PatientView } from "@/server/cases/projector";
 import type { CaseContent } from "@/server/cases/schema";
+import { sttUsdPerMinute, ttsAvailable, ttsUsdPer1kChars, voiceFake, voiceIdFor } from "@/server/voice/config";
+import { elevenLabsSynthesize, fakeSynthesize } from "@/server/voice/elevenlabs";
+import { TtsPipeline, type AudioEvent } from "@/server/voice/tts-pipeline";
 import { patientLlm } from "./llm";
 import { runPatientTurn } from "./patient-turn";
 
@@ -118,6 +121,12 @@ export async function startConsultation(userId: string, caseSlug: string): Promi
   return created.id;
 }
 
+/** Throws unless the student's station is in its history phase (voice tokens are only for that). */
+export async function requireHistoryPhase(userId: string, id: string) {
+  const station = await loadOwned(createAdminClient(), userId, id);
+  if (station.status !== "history") throw new StationError("wrong_phase", "The patient isn't taking questions right now.");
+}
+
 /** Reading time is over: the clock starts and the patient says their opening line. */
 export async function beginHistory(userId: string, id: string) {
   const db = createAdminClient();
@@ -227,17 +236,24 @@ export async function loadStation(userId: string, id: string, userDb: Db) {
     title: content.meta.title,
     brief: content.candidate_brief,
     patient: { name: patientView.name, age: patientView.age },
+    hasVoice: voiceIdFor(content.patient.voice_profile) !== null,
     messages: (messages ?? []) as Row[],
   };
 }
 
 export type StationData = NonNullable<Awaited<ReturnType<typeof loadStation>>>;
 
+/** "done" means the turn is saved and the next one may start; audio and logging can still follow. */
+export type TurnEvent = PatientEvent | AudioEvent | { type: "done" };
+
+/** Longest speech-to-text duration we'll log for one utterance (the value is client-reported). */
+const MAX_STT_SECONDS = 120;
+
 export async function patientTurn(
   userId: string,
   id: string,
-  input: { utterance: string; clientSeq: number },
-  emit: (e: PatientEvent) => void,
+  input: { utterance: string; clientSeq: number; voice?: boolean; sttSeconds?: number },
+  emit: (e: TurnEvent) => void,
   signal: AbortSignal,
 ) {
   const utterance = input.utterance.trim();
@@ -255,22 +271,24 @@ export async function patientTurn(
     throw new StationError("phase_over", "Time's up for the history.");
   }
 
-  const before = await historyMessages(db, id);
+  // Independent reads in parallel: every round trip here delays the patient's first word.
+  const [before, { content, patientView }] = await Promise.all([historyMessages(db, id), caseVersion(db, station.case_version_id)]);
   const replayIdx = before.findIndex((m) => m.role === "student" && m.client_seq === input.clientSeq);
   if (replayIdx >= 0) {
     const reply = before.slice(replayIdx + 1).find((m) => m.role === "patient");
     if (!reply) throw new StationError("turn_in_progress", "The patient is still answering that.");
     emit({ type: "emotion", emotion: (reply.emotion ?? "neutral") as never });
     emit({ type: "sentence", text: reply.content });
+    emit({ type: "done" });
     return { replayed: true };
   }
   if (before.filter((m) => m.role === "student").length >= MAX_TURNS_PER_PHASE) {
     throw new StationError("invalid_input", "That's a lot of questions! Time to wrap up the history.");
   }
 
-  await insertMessage(db, id, { role: "student", content: utterance, clientSeq: input.clientSeq });
-
-  const { content, patientView } = await caseVersion(db, station.case_version_id);
+  // Saved while the patient starts answering; awaited before the reply is stored, which keeps seq order.
+  const studentSaved = insertMessage(db, id, { role: "student", content: utterance, clientSeq: input.clientSeq });
+  studentSaved.catch(() => {}); // handled where it's awaited below
   // Everything after the opening statement (seq 0), oldest first, ending with this utterance.
   const history: ChatTurn[] = [
     ...before.slice(1).map((m) => ({ role: m.role, content: m.content })),
@@ -279,22 +297,37 @@ export async function patientTurn(
   const limit = station.station_config.history_seconds ?? 300;
   const elapsed = station.history_started_at ? (now - Date.parse(station.history_started_at)) / 1000 : 0;
 
+  // Voice out: each sentence that passes the guardrail is synthesised while the next is generated.
+  const voiceId = input.voice && ttsAvailable() ? voiceIdFor(content.patient.voice_profile) : null;
+  const tts = voiceId ? new TtsPipeline(voiceFake() ? fakeSynthesize() : elevenLabsSynthesize(voiceId), emit) : null;
+  let emotion: Emotion = "neutral";
+  const turnEmit = (e: PatientEvent) => {
+    emit(e);
+    if (e.type === "emotion") emotion = e.emotion;
+    else if (e.type === "sentence") tts?.push(e.text, emotion);
+    else if (e.type === "reset") tts?.reset();
+  };
+
   const result = await runPatientTurn({
     view: patientView,
     leakTerms: leakTerms(content),
     history,
     state: { elapsedSeconds: elapsed, limitSeconds: limit, disclosedFactIds: station.disclosed_fact_ids },
     llm: patientLlm(),
-    emit,
+    emit: turnEmit,
     signal,
   });
 
+  await studentSaved;
   await insertMessage(db, id, { role: "patient", content: result.text, emotion: result.emotion });
 
   const disclosed = [...new Set([...station.disclosed_fact_ids, ...result.factIds])];
   if (disclosed.length !== station.disclosed_fact_ids.length) {
     await db.from("consultations").update({ disclosed_fact_ids: disclosed }).eq("id", id);
   }
+  // Everything the next turn reads is stored, so the student can talk again while the rest of
+  // this turn's audio plays and its cost is logged.
+  emit({ type: "done" });
 
   if (result.calls.length) {
     const { error } = await db.from("ai_calls").insert(
@@ -317,5 +350,21 @@ export async function patientTurn(
     if (error) console.error("ai_calls insert failed", { code: error.code });
   }
   if (result.outcome !== "ok") console.warn("patient turn", { consultation: id, outcome: result.outcome, guardrail: result.guardrail?.reason });
-  return { replayed: false };
+
+  await tts?.finish();
+  const usage = [];
+  const sttSeconds = Math.min(MAX_STT_SECONDS, Math.max(0, Number(input.sttSeconds) || 0));
+  if (sttSeconds > 0 && !voiceFake()) {
+    usage.push({ provider: "deepgram", units: sttSeconds, unit: "seconds", cost_usd: round6((sttSeconds / 60) * sttUsdPerMinute()) });
+  }
+  if (tts && tts.characters > 0 && !voiceFake()) {
+    usage.push({ provider: "elevenlabs", units: tts.characters, unit: "characters", cost_usd: round6((tts.characters / 1000) * ttsUsdPer1kChars()) });
+  }
+  if (usage.length) {
+    const { error } = await db.from("voice_usage").insert(usage.map((u) => ({ ...u, consultation_id: id, user_id: userId })));
+    if (error) console.error("voice_usage insert failed", { code: error.code });
+  }
+  return { replayed: false, ttsFailures: tts?.failures ?? 0 };
 }
+
+const round6 = (n: number) => Math.round(n * 1e6) / 1e6;

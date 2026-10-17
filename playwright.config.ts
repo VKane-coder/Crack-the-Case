@@ -26,7 +26,12 @@ export default defineConfig({
     url: `http://localhost:${PORT}`,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
-    // The scripted patient keeps e2e runs free and deterministic; set PATIENT_LLM=claude to use the real API.
-    env: { NEXT_PUBLIC_SITE_URL: `http://localhost:${PORT}`, PATIENT_LLM: process.env.PATIENT_LLM ?? "fake" },
+    // The scripted patient and silent voice stand-ins keep e2e runs free and deterministic;
+    // set PATIENT_LLM=claude or VOICE_PROVIDERS=real to exercise the real services.
+    env: {
+      NEXT_PUBLIC_SITE_URL: `http://localhost:${PORT}`,
+      PATIENT_LLM: process.env.PATIENT_LLM ?? "fake",
+      VOICE_PROVIDERS: process.env.VOICE_PROVIDERS ?? "fake",
+    },
   },
 });
