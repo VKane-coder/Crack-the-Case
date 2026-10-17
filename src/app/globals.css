@@ -1,26 +1,136 @@
 @import "tailwindcss";
+@import "tw-animate-css";
 
+@custom-variant dark (&:is(.dark *));
+
+/*
+ * Crack the Case design tokens.
+ * Brand: soft blue, teal, purple, mint, coral accents. Achievement tiers: bronze/silver/gold/emerald.
+ * shadcn semantic tokens (background, primary, ...) map onto the brand palette.
+ */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --radius: 1rem;
+
+  /* Brand */
+  --brand-blue: #5b8def;
+  --brand-teal: #14b8a6;
+  --brand-purple: #8b5cf6;
+  --brand-mint: #6ee7b7;
+  --brand-coral: #ff7a6b;
+
+  /* Achievement tiers */
+  --tier-bronze: #cd7f32;
+  --tier-silver: #a8b1bf;
+  --tier-gold: #f5b83d;
+  --tier-emerald: #10b981;
+
+  /* Gamification */
+  --xp: var(--brand-purple);
+  --streak: #ff8a3d;
+
+  /* Semantic (shadcn) */
+  --background: #f8faff;
+  --foreground: #1e2340;
+  --card: #ffffff;
+  --card-foreground: #1e2340;
+  --popover: #ffffff;
+  --popover-foreground: #1e2340;
+  --primary: var(--brand-blue);
+  --primary-foreground: #ffffff;
+  --secondary: #eef3ff;
+  --secondary-foreground: #2b3366;
+  --muted: #eef1f8;
+  --muted-foreground: #646b8a;
+  --accent: #e9fbf5;
+  --accent-foreground: #0f5f55;
+  --destructive: #e5484d;
+  --border: #e3e8f4;
+  --input: #e3e8f4;
+  --ring: var(--brand-blue);
+
+  /* Surfaces */
+  --hub-gradient: radial-gradient(1200px 600px at 10% -10%, #e6edff 0%, transparent 60%),
+    radial-gradient(900px 500px at 100% 0%, #f1eaff 0%, transparent 55%),
+    radial-gradient(800px 500px at 50% 120%, #e3fbf3 0%, transparent 60%);
+}
+
+.dark {
+  --background: #10132a;
+  --foreground: #eef1ff;
+  --card: #181c38;
+  --card-foreground: #eef1ff;
+  --popover: #181c38;
+  --popover-foreground: #eef1ff;
+  --primary: #7aa3ff;
+  --primary-foreground: #0d1030;
+  --secondary: #232849;
+  --secondary-foreground: #dfe5ff;
+  --muted: #20253f;
+  --muted-foreground: #9aa2c7;
+  --accent: #133a36;
+  --accent-foreground: #bff5e6;
+  --border: #2a3055;
+  --input: #2a3055;
+  --hub-gradient: radial-gradient(1200px 600px at 10% -10%, #1d2554 0%, transparent 60%),
+    radial-gradient(900px 500px at 100% 0%, #2a1d52 0%, transparent 55%),
+    radial-gradient(800px 500px at 50% 120%, #11352f 0%, transparent 60%);
 }
 
 @theme inline {
+  --font-sans: var(--font-nunito), ui-sans-serif, system-ui, sans-serif;
+
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-brand-blue: var(--brand-blue);
+  --color-brand-teal: var(--brand-teal);
+  --color-brand-purple: var(--brand-purple);
+  --color-brand-mint: var(--brand-mint);
+  --color-brand-coral: var(--brand-coral);
+  --color-tier-bronze: var(--tier-bronze);
+  --color-tier-silver: var(--tier-silver);
+  --color-tier-gold: var(--tier-gold);
+  --color-tier-emerald: var(--tier-emerald);
+  --color-xp: var(--xp);
+  --color-streak: var(--streak);
+
+  --radius-sm: calc(var(--radius) - 6px);
+  --radius-md: calc(var(--radius) - 4px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
 }
