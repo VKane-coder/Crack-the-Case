@@ -22,7 +22,8 @@ function friendlyAuthError(error: { status?: number; code?: string; message: str
   }
   if (error.code === "email_address_invalid") return "That email address can't receive mail. Check it and try again.";
   if (error.code === "otp_disabled" || error.code === "signup_disabled") return "Sign-ups are paused right now. Please try later.";
-  return "Something went wrong on our side. Please try again.";
+  // Show the code so a failure can be diagnosed from a screenshot; it reveals nothing sensitive.
+  return `Something went wrong on our side. Please try again. (${error.code ?? `error ${error.status ?? "unknown"}`})`;
 }
 
 export async function sendEmailLink(input: { email: string; next?: string }): Promise<AuthActionResult> {
