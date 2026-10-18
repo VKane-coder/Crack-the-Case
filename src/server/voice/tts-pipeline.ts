@@ -12,6 +12,11 @@ export type Synthesize = (
 
 export type AudioEvent = { type: "audio"; index: number; mime: string; data: string };
 
+/** Short provider code for a failed synthesis (e.g. "elevenlabs_401_missing_permissions"); never secrets. */
+export function voiceErrorCode(err: unknown) {
+  return (err as { voiceCode?: string } | null)?.voiceCode ?? "tts_failed";
+}
+
 export class TtsPipeline {
   private chain: Promise<void> = Promise.resolve();
   private ctrl = new AbortController();
@@ -24,6 +29,8 @@ export class TtsPipeline {
   constructor(
     private readonly synthesize: Synthesize,
     private readonly emit: (e: AudioEvent) => void,
+    /** Called once, on the first failure, so the student learns why the patient is silent. */
+    private readonly onFirstFailure?: (code: string) => void,
   ) {}
 
   push(text: string, emotion: Emotion) {
@@ -35,8 +42,8 @@ export class TtsPipeline {
     // Start now; the chain only orders the emits.
     const audio = this.synthesize(text, { emotion, previousText }, signal).catch((err) => {
       if (!signal.aborted) {
-        this.failures++;
-        console.warn("tts failed", { message: err instanceof Error ? err.message : String(err) });
+        if (this.failures++ === 0) this.onFirstFailure?.(voiceErrorCode(err));
+        console.warn("tts failed", { code: voiceErrorCode(err), message: err instanceof Error ? err.message : String(err) });
       }
       return null;
     });

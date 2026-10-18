@@ -22,5 +22,6 @@ export type PatientStreamEvent =
   | { type: "text"; text: string }
   | { type: "reset" }
   | { type: "audio"; index: number; mime: string; data: string }
+  | { type: "voice_error"; code: string }
   | { type: "done" }
   | { type: "error"; code: string; message: string };

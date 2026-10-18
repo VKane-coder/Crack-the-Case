@@ -243,7 +243,7 @@ export async function loadStation(userId: string, id: string, userDb: Db) {
 export type StationData = NonNullable<Awaited<ReturnType<typeof loadStation>>>;
 
 /** "done" means the turn is saved and the next one may start; audio and logging can still follow. */
-export type TurnEvent = PatientEvent | AudioEvent | { type: "done" };
+export type TurnEvent = PatientEvent | AudioEvent | { type: "voice_error"; code: string } | { type: "done" };
 
 /** Longest speech-to-text duration we'll log for one utterance (the value is client-reported). */
 const MAX_STT_SECONDS = 120;
@@ -299,15 +299,16 @@ export async function patientTurn(
   // Voice out: each sentence that passes the guardrail is synthesised while the next is generated.
   // The voice lookup (first turn on a fresh server only) runs alongside generation, not before it.
   const voiceId = input.voice && ttsAvailable() && !voiceFake() ? resolveVoiceId(content.patient.voice_profile) : null;
+  voiceId?.catch(() => {}); // a failed lookup surfaces through the first sentence's synthesis
   const synthesize: Synthesize | null = voiceFake()
     ? input.voice ? fakeSynthesize() : null
     : voiceId &&
       (async (text, opts, sig) => {
         const id = await voiceId;
-        if (!id) throw new Error("no ElevenLabs voice available");
+        if (!id) throw Object.assign(new Error("no ElevenLabs voice available"), { voiceCode: "elevenlabs_no_voice" });
         return elevenLabsSynthesize(id)(text, opts, sig);
       });
-  const tts = synthesize ? new TtsPipeline(synthesize, emit) : null;
+  const tts = synthesize ? new TtsPipeline(synthesize, emit, (code) => emit({ type: "voice_error", code })) : null;
   let emotion: Emotion = "neutral";
   const turnEmit = (e: PatientEvent) => {
     emit(e);

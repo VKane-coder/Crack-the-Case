@@ -45,6 +45,7 @@ export function StationClient({ station, voice }: { station: StationData; voice:
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const [voiceOn, setVoiceOn] = useState(voice.output);
   const [playing, setPlaying] = useState(false);
+  const [voiceError, setVoiceError] = useState<string | null>(null);
   const audio = useRef<AudioQueue | null>(null);
   const player = () => (audio.current ??= new AudioQueue(setPlaying));
   const speech = useSpeechInput(station.id, voice.input && status === "history");
@@ -139,7 +140,10 @@ export function StationClient({ station, voice }: { station: StationData; voice:
           else if (ev.type === "reset") {
             setLive((reply = ""));
             audio.current?.stop();
-          } else if (ev.type === "audio" && voiceOn) player().enqueue(ev.data, ev.mime);
+          } else if (ev.type === "audio" && voiceOn) {
+            setVoiceError(null);
+            player().enqueue(ev.data, ev.mime);
+          } else if (ev.type === "voice_error") setVoiceError(ev.code);
           else if (ev.type === "done") commit();
           else if (ev.type === "error") failure = ev;
         });
@@ -328,6 +332,12 @@ export function StationClient({ station, voice }: { station: StationData; voice:
             <Send />
           </Button>
         </form>
+        {voiceOn && voiceError && (
+          <p role="status" className="text-center text-sm text-muted-foreground">
+            {station.patient.name.split(" ")[0]}&apos;s voice isn&apos;t working right now, so replies are text only.{" "}
+            <span className="opacity-70">({voiceError})</span>
+          </p>
+        )}
         <div className="flex flex-wrap items-center justify-center gap-2">
           {voice.output && (
             <Button
