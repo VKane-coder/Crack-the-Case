@@ -315,11 +315,13 @@ export async function patientTurn(
       });
   let firstTextMs: number | null = null;
   let timed = false;
+  // Timing goes out just before the first audio: the browser starts playing as soon as audio arrives.
   const emitAudio = (e: AudioEvent) => {
+    if (!timed) {
+      timed = true;
+      emit({ type: "timing", readyMs, firstTextMs, firstAudioMs: Date.now() - startedAt, region: process.env.VERCEL_REGION ?? null });
+    }
     emit(e);
-    if (timed) return;
-    timed = true;
-    emit({ type: "timing", readyMs, firstTextMs, firstAudioMs: Date.now() - startedAt, region: process.env.VERCEL_REGION ?? null });
   };
   const tts = synthesize ? new TtsPipeline(synthesize, emitAudio, (code) => emit({ type: "voice_error", code })) : null;
   let emotion: Emotion = "neutral";
