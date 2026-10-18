@@ -35,7 +35,11 @@ export default async function StationPage({ params }: PageProps<"/station/[id]">
       </header>
       <main className="mx-auto max-w-3xl px-4 py-5">
         {setupNote && <p className="mb-4 rounded-xl bg-muted p-3 text-center text-sm text-muted-foreground">{setupNote}</p>}
-        <StationClient station={station} voice={{ input: sttAvailable(), output: ttsAvailable() }} />
+        <StationClient
+          station={station}
+          voice={{ input: sttAvailable(), output: ttsAvailable() }}
+          showLatency={process.env.VERCEL_ENV !== "production"}
+        />
       </main>
     </div>
   );

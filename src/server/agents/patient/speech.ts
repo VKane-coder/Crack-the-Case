@@ -9,6 +9,9 @@ export type SpeechEvent = { type: "emotion"; emotion: Emotion } | { type: "sente
 const TAG = /^\s*\[emotion:\s*([a-z_]+)\s*\]\s*/i;
 // A sentence ends at . ! ? or … (optionally followed by closing quotes/brackets) and then whitespace.
 const BOUNDARY = /[.!?…]+["'”’)]*\s+/g;
+// The first piece of a reply may end at a clause instead, so the patient starts speaking sooner.
+const CLAUSE = /[,;:—–]\s+/g;
+const MIN_FIRST_CLAUSE = 24;
 
 export function parseEmotion(raw: string): Emotion {
   const e = raw.toLowerCase() as Emotion;
@@ -30,6 +33,7 @@ export function cleanSpoken(text: string): string {
 export class SpeechBuffer {
   private buf = "";
   private tagResolved = false;
+  private released = false;
   emotion: Emotion = "neutral";
 
   push(delta: string): SpeechEvent[] {
@@ -42,7 +46,16 @@ export class SpeechBuffer {
     }
     let cut = 0;
     for (const m of this.buf.matchAll(BOUNDARY)) cut = m.index + m[0].length;
+    if (cut === 0 && !this.released) {
+      for (const m of this.buf.matchAll(CLAUSE)) {
+        if (m.index >= MIN_FIRST_CLAUSE) {
+          cut = m.index + m[0].length;
+          break;
+        }
+      }
+    }
     if (cut > 0) {
+      this.released = true;
       const ready = cleanSpoken(this.buf.slice(0, cut));
       this.buf = this.buf.slice(cut);
       if (ready) out.push({ type: "sentence", text: ready });

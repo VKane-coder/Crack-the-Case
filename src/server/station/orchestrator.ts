@@ -243,7 +243,10 @@ export async function loadStation(userId: string, id: string, userDb: Db) {
 export type StationData = NonNullable<Awaited<ReturnType<typeof loadStation>>>;
 
 /** "done" means the turn is saved and the next one may start; audio and logging can still follow. */
-export type TurnEvent = PatientEvent | AudioEvent | { type: "voice_error"; code: string } | { type: "done" };
+/** Milliseconds from the start of the turn's server work, sent once with the first audio (for latency tuning). */
+export type TurnTiming = { type: "timing"; readyMs: number; firstTextMs: number | null; firstAudioMs: number; region: string | null };
+
+export type TurnEvent = PatientEvent | AudioEvent | TurnTiming | { type: "voice_error"; code: string } | { type: "done" };
 
 /** Longest speech-to-text duration we'll log for one utterance (the value is client-reported). */
 const MAX_STT_SECONDS = 120;
@@ -255,6 +258,7 @@ export async function patientTurn(
   emit: (e: TurnEvent) => void,
   signal: AbortSignal,
 ) {
+  const startedAt = Date.now();
   const utterance = input.utterance.trim();
   if (!utterance || utterance.length > MAX_UTTERANCE_CHARS || !Number.isInteger(input.clientSeq) || input.clientSeq < 0) {
     throw new StationError("invalid_input", `Say something between 1 and ${MAX_UTTERANCE_CHARS} characters.`);
@@ -272,6 +276,7 @@ export async function patientTurn(
 
   // Independent reads in parallel: every round trip here delays the patient's first word.
   const [before, { content, patientView }] = await Promise.all([historyMessages(db, id), caseVersion(db, station.case_version_id)]);
+  const readyMs = Date.now() - startedAt;
   const replayIdx = before.findIndex((m) => m.role === "student" && m.client_seq === input.clientSeq);
   if (replayIdx >= 0) {
     const reply = before.slice(replayIdx + 1).find((m) => m.role === "patient");
@@ -308,9 +313,18 @@ export async function patientTurn(
         if (!id) throw Object.assign(new Error("no ElevenLabs voice available"), { voiceCode: "elevenlabs_no_voice" });
         return elevenLabsSynthesize(id)(text, opts, sig);
       });
-  const tts = synthesize ? new TtsPipeline(synthesize, emit, (code) => emit({ type: "voice_error", code })) : null;
+  let firstTextMs: number | null = null;
+  let timed = false;
+  const emitAudio = (e: AudioEvent) => {
+    emit(e);
+    if (timed) return;
+    timed = true;
+    emit({ type: "timing", readyMs, firstTextMs, firstAudioMs: Date.now() - startedAt, region: process.env.VERCEL_REGION ?? null });
+  };
+  const tts = synthesize ? new TtsPipeline(synthesize, emitAudio, (code) => emit({ type: "voice_error", code })) : null;
   let emotion: Emotion = "neutral";
   const turnEmit = (e: PatientEvent) => {
+    if (e.type === "sentence" && firstTextMs === null) firstTextMs = Date.now() - startedAt;
     emit(e);
     if (e.type === "emotion") emotion = e.emotion;
     else if (e.type === "sentence") tts?.push(e.text, emotion);
