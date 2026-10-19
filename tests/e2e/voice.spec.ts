@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { createOnboardedUser, deleteTestUsers } from "./helpers";
+import { admin, createOnboardedUser, deleteTestUsers } from "./helpers";
 
 // Runs with VOICE_PROVIDERS=fake: the "speech recogniser" returns window.__fakeSttTranscript and the
 // "voice" is silent WAV, so this covers the push-to-talk flow and the audio stream, not the vendors.
@@ -67,10 +67,13 @@ test("push-to-talk sends speech to the patient and the reply comes back with aud
   const third = await say(page, "Do you take any medicines, like thyroxine?", "button");
   expect(third).not.toContain('"type":"audio"');
 
-  // Voice tokens are only issued while the history is running.
+  // Voice tokens are issued while the student speaks (patient and examiner stages), never after.
   const id = page.url().split("/").pop()!;
-  await page.getByRole("button", { name: "End history and move on" }).click();
-  await expect(page.getByText("History complete")).toBeVisible();
+  await page.getByRole("button", { name: "Move to the examiner" }).click();
+  await expect(page.getByRole("log", { name: "Presentation so far" })).toBeVisible();
+  const presenting = await page.request.post("/api/voice/deepgram-token", { data: { consultationId: id } });
+  expect(presenting.status()).toBe(200);
+  await admin().rpc("transition_consultation", { p_id: id, p_from: "presentation", p_to: "abandoned" });
   const token = await page.request.post("/api/voice/deepgram-token", { data: { consultationId: id } });
   expect(token.status()).toBe(409);
 });

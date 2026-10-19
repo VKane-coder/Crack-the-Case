@@ -21,6 +21,8 @@ export function assessorOutput(itemKeys: string[]) {
       z.object({
         key: z.enum(itemKeys as [string, ...string[]]),
         outcome: z.enum(OUTCOMES),
+        /** Marks awarded for a partial outcome, following the item's marking criteria. */
+        points: z.number(),
         evidence: z.string(),
       }),
     ),

@@ -51,7 +51,7 @@ export default async function HubPage() {
     profile.target_specialties.length
       ? supabase
           .from("v_case_catalog")
-          .select("slug, title, difficulty, persona, specialty_name, history_seconds, presentation_seconds")
+          .select("slug, title, difficulty, persona, specialty_name, station_seconds")
           .in("specialty_slug", profile.target_specialties)
           .order("difficulty")
           .limit(1)
@@ -59,7 +59,7 @@ export default async function HubPage() {
       : Promise.resolve({ data: null }),
     supabase
       .from("v_case_catalog")
-      .select("slug, title, difficulty, persona, specialty_name, history_seconds, presentation_seconds")
+      .select("slug, title, difficulty, persona, specialty_name, station_seconds")
       .order("difficulty")
       .limit(1)
       .maybeSingle(),
@@ -125,7 +125,7 @@ export default async function HubPage() {
               <Badge variant="purple">Difficulty {recommended.difficulty}/5</Badge>
               {recommended.persona && <Badge variant="coral">{PERSONA_LABEL[recommended.persona] ?? recommended.persona} patient</Badge>}
               <Badge variant="outline">
-                <Clock /> {Math.round((recommended.history_seconds + recommended.presentation_seconds) / 60)} min
+                <Clock /> {Math.round(recommended.station_seconds / 60)} min
               </Badge>
             </CardContent>
             <div className="flex items-center justify-between gap-3">

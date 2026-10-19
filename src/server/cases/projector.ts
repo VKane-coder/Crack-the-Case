@@ -19,7 +19,7 @@ export function toPatientView(c: CaseContent) {
     opening_statement: p.opening_statement,
     presenting_complaint: { ...p.presenting_complaint },
     // is_red_flag is an examiner signal; the patient shouldn't treat red flags differently.
-    facts: p.facts.map(({ id, category, content, disclosure }) => ({ id, category, content, disclosure })),
+    facts: p.facts.map(({ id, category, content, disclosure, prompt }) => ({ id, category, content, disclosure, prompt })),
     ice: { ...p.ice },
     behaviour_rules: [...p.behaviour_rules],
   };

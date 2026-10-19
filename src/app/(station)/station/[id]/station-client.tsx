@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowRight, BookOpen, CheckCircle2, ClipboardList, Loader2, Presentation, RotateCcw, UserRound, Volume2, VolumeX } from "lucide-react";
+import { ArrowRight, BookOpen, CheckCircle2, ClipboardList, ListChecks, Loader2, Presentation, RotateCcw, UserRound, Volume2, VolumeX } from "lucide-react";
 import { faceFor, PatientStage } from "@/components/station/patient-stage";
 import { formatClock, PhaseTimer } from "@/components/station/phase-timer";
 import { Button } from "@/components/ui/button";
@@ -15,12 +15,14 @@ import { useSpeechInput } from "@/features/station/use-speech-input";
 import type { StationData } from "@/server/station/orchestrator";
 import { TalkControls, type Spoken, type TalkControlsHandle } from "./talk-controls";
 
-const READING_SECONDS = 60;
 const POLL_MS = 2_000;
+/** Stages that run on the station clock; when it hits zero the station goes straight to marking. */
+const STATION_STAGES: string[] = ["history", "history_ended", "presentation", "examiner_questions"];
 const STRUCTURE = ["Summary", "Key positives", "Key negatives", "Differentials", "Investigations", "Management"];
 
 type Msg = { role: "student" | "patient"; content: string; emotion?: string | null };
-type Question = { ord: number; text: string; answered: boolean };
+type Media = { url: string; alt: string; caption: string | null };
+type Question = { ord: number; text: string; answered: boolean; media?: Media | null };
 type ApiResult<T> = { data?: T; error?: { code: string; message: string } };
 
 async function post<T>(url: string, body: object = {}): Promise<ApiResult<T>> {
@@ -76,7 +78,11 @@ export function StationClient({
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [now, setNow] = useState(() => Date.now());
-  const [readingEnds] = useState(() => Date.now() + READING_SECONDS * 1000);
+  const [readingEnds] = useState(() =>
+    station.readingEndsAt ? Math.max(Date.parse(station.readingEndsAt), Date.now()) : Date.now() + station.readingSeconds * 1000,
+  );
+  const [timedOut, setTimedOut] = useState(false);
+  const finishing = useRef(false);
   const [voiceOn, setVoiceOn] = useState(voice.output);
   const [playing, setPlaying] = useState(false);
   const [voiceError, setVoiceError] = useState<string | null>(null);
@@ -118,48 +124,61 @@ export function StationClient({
     setTimeout(() => talk.current?.focus(), 0);
   }, [api]);
 
-  const endHistory = useCallback(async () => {
-    if (ending.current) return;
-    ending.current = true;
-    audio.current?.stop();
-    const res = await post(`${api}/end-history`);
-    ending.current = false;
-    if (res.error) return setError(res.error.message);
-    setDeadline(null);
-    setStatus("history_ended");
-  }, [api]);
-
   async function startPresentation() {
     setBusy(true);
     setError(null);
     const res = await post<{ deadline: string }>(`${api}/start-presentation`);
     setBusy(false);
     if (!res.data) return setError(res.error?.message ?? "Couldn't start the presentation.");
-    setDeadline(res.data.deadline);
+    if (res.data.deadline) setDeadline(res.data.deadline);
     setStatus("presentation");
   }
+
+  /** The student leaves the patient: straight on to presenting, on the same clock. */
+  const moveToExaminer = useCallback(async () => {
+    if (ending.current) return;
+    ending.current = true;
+    audio.current?.stop();
+    const res = await post(`${api}/end-history`);
+    ending.current = false;
+    if (res.error) return setError(res.error.message);
+    setStatus("history_ended");
+    await startPresentation();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- startPresentation only uses api and setters
+  }, [api]);
 
   const endPresentation = useCallback(async () => {
     if (ending.current) return;
     ending.current = true;
     setBusy(true);
     setError(null);
-    const res = await post<{ question: { ord: number; text: string } | null; total: number }>(`${api}/end-presentation`);
+    const res = await post<{ question: { ord: number; text: string; media: Media | null } | null; total: number }>(`${api}/end-presentation`);
     ending.current = false;
     setBusy(false);
     if (!res.data) return setError(res.error?.message ?? "The examiner couldn't load a question. Please try again.");
-    setDeadline(null);
     if (res.data.question) setQuestions([{ ...res.data.question, answered: false }]);
     setStatus("examiner_questions");
   }, [api]);
 
   async function finish() {
+    if (finishing.current) return;
+    finishing.current = true;
     setBusy(true);
     const res = await post(`${api}/finish`);
     setBusy(false);
+    finishing.current = false;
     if (res.error) return setError(res.error.message);
     setStatus("assessing");
   }
+
+  /** The station clock ran out: like the bell in a real OSCE, everything stops and marking begins. */
+  const timeUp = useCallback(() => {
+    if (finishing.current) return;
+    audio.current?.stop();
+    setTimedOut(true);
+    void finish();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- finish only uses api and setters
+  }, [api]);
 
   async function retry() {
     setBusy(true);
@@ -176,8 +195,7 @@ export function StationClient({
     tick.current = () => {
       const t = Date.now();
       if (status === "briefing" && t >= readingEnds && !busy) void startHistory();
-      if (status === "history" && deadline && Date.parse(deadline) <= t && live === null) void endHistory();
-      if (status === "presentation" && deadline && Date.parse(deadline) <= t && !busy) void endPresentation();
+      if (STATION_STAGES.includes(status) && deadline && Date.parse(deadline) <= t) timeUp();
     };
   });
   useEffect(() => {
@@ -270,7 +288,7 @@ export function StationClient({
       const f = failure as { code: string; message: string };
       setMessages((m) => m.slice(0, -1));
       if (f.code === "phase_over") {
-        setStatus("history_ended");
+        timeUp();
         return true;
       }
       setError(f.message);
@@ -286,7 +304,7 @@ export function StationClient({
     const res = await post(`${api}/presentation-segment`, { text, clientSeq: segments.length });
     if (!res.error) return true;
     setSegments((s) => s.slice(0, -1));
-    if (res.error.code === "phase_over") void endPresentation();
+    if (res.error.code === "phase_over") timeUp();
     else setError(res.error.message);
     return false;
   }
@@ -296,9 +314,16 @@ export function StationClient({
     if (!current) return false;
     setError(null);
     setBusy(true);
-    const res = await post<{ question: { ord: number; text: string } | null }>(`${api}/examiner-answer`, { ord: current.ord, answer: text });
+    const res = await post<{ question: { ord: number; text: string; media: Media | null } | null }>(`${api}/examiner-answer`, {
+      ord: current.ord,
+      answer: text,
+    });
     setBusy(false);
     if (!res.data) {
+      if (res.error?.code === "phase_over") {
+        timeUp();
+        return true;
+      }
       setError(res.error?.message ?? "Couldn't save that answer.");
       return false;
     }
@@ -332,10 +357,27 @@ export function StationClient({
           <PhaseTimer remainingMs={readingEnds - now} label="Reading" warnAtMs={10_000} />
         </div>
         <Card>
-          <p className="text-lg leading-relaxed">{station.brief}</p>
+          <p className="text-lg leading-relaxed whitespace-pre-line">{station.brief}</p>
+          {station.readingMedia.map((m) => (
+            <MediaFigure key={m.url} media={m} />
+          ))}
+        </Card>
+        <Card>
+          <p className="flex items-center gap-1.5 text-xs font-extrabold tracking-wide text-muted-foreground uppercase">
+            <ListChecks className="size-3.5" /> Your task
+          </p>
+          {station.tasks.length ? (
+            <ol className="list-decimal space-y-1 pl-5 leading-relaxed">
+              {station.tasks.map((t) => (
+                <li key={t}>{t}</li>
+              ))}
+            </ol>
+          ) : (
+            <p className="leading-relaxed whitespace-pre-line">{station.task}</p>
+          )}
           <p className="text-sm text-muted-foreground">
-            You&apos;ll have {formatClock(station.historySeconds * 1000)} to take a history from {station.patient.name}, then{" "}
-            {formatClock(station.presentationSeconds * 1000)} to present to the examiner and answer their questions.{" "}
+            When reading time ends, you&apos;ll have {formatClock(station.stationSeconds * 1000)} for the whole station: {station.patient.name} first, then the
+            examiner. If time runs out, the station ends and goes straight to marking.{" "}
             {voice.input
               ? "Hold the talk button (or the space bar) while you speak, and let go when you've finished. You can also type."
               : "Type what you'd say."}
@@ -353,8 +395,14 @@ export function StationClient({
     return (
       <div className="flex h-[calc(100dvh-7.5rem)] flex-col gap-4">
         <div className="flex items-center justify-between gap-4">
-          <PatientStage name={station.patient.name} age={station.patient.age} emotion={emotion ?? "neutral"} speaking={live !== null || playing} />
-          <PhaseTimer remainingMs={remaining} label="History" />
+          <PatientStage
+            name={station.patient.name}
+            age={station.patient.age}
+            emotion={emotion ?? "neutral"}
+            speaking={live !== null || playing}
+            avatarUrl={station.patient.avatarUrl}
+          />
+          <PhaseTimer remainingMs={remaining} label="Station" />
         </div>
         <div ref={logRef} className="flex-1 space-y-3 overflow-y-auto rounded-2xl border bg-muted/30 p-4" role="log" aria-live="polite" aria-label="Consultation">
           {messages.map((m, i) => (
@@ -403,8 +451,8 @@ export function StationClient({
               {voiceOn ? <Volume2 /> : <VolumeX />} Patient voice {voiceOn ? "on" : "off"}
             </Button>
           )}
-          <Button variant="outline" onClick={endHistory}>
-            End history and move on <ArrowRight />
+          <Button variant="outline" onClick={moveToExaminer} disabled={busy}>
+            Move to the examiner <ArrowRight />
           </Button>
         </div>
       </div>
@@ -420,8 +468,8 @@ export function StationClient({
               <CheckCircle2 className="text-brand-teal" /> History complete
             </CardTitle>
             <CardDescription>
-              {messages.filter((m) => m.role === "student").length} questions asked. Now present your findings to the examiner. You have{" "}
-              {formatClock(station.presentationSeconds * 1000)}.
+              {messages.filter((m) => m.role === "student").length} questions asked. Now present your findings to the examiner. The station
+              clock is still running: {formatClock(remaining)} left.
             </CardDescription>
           </CardHeader>
           <StructureHint />
@@ -440,7 +488,7 @@ export function StationClient({
       <div className="flex h-[calc(100dvh-7.5rem)] flex-col gap-4">
         <div className="flex items-center justify-between gap-4">
           <ExaminerStage caption={busy ? "reviewing your presentation…" : "listening"} />
-          <PhaseTimer remainingMs={remaining} label="Presentation" />
+          <PhaseTimer remainingMs={remaining} label="Station" />
         </div>
         <StructureHint compact />
         <div ref={logRef} className="flex-1 space-y-3 overflow-y-auto rounded-2xl border bg-muted/30 p-4" role="log" aria-live="polite" aria-label="Presentation so far">
@@ -474,7 +522,10 @@ export function StationClient({
     const asked = questions.filter((q) => q.answered).length + (current ? 1 : 0);
     return (
       <div className="flex flex-col gap-4">
-        <ExaminerStage caption={busy ? "noting your answer…" : current ? "waiting for your answer" : "finishing up…"} />
+        <div className="flex items-center justify-between gap-4">
+          <ExaminerStage caption={busy ? "noting your answer…" : current ? "waiting for your answer" : "finishing up…"} />
+          <PhaseTimer remainingMs={remaining} label="Station" />
+        </div>
         <Card className="border-brand-purple/30">
           <p className="text-xs font-extrabold tracking-wide text-brand-purple uppercase">
             Examiner · question {asked}
@@ -482,6 +533,7 @@ export function StationClient({
           <p className="text-xl leading-relaxed font-bold" aria-live="polite">
             {current?.text ?? "Thank you. That's the end of the station."}
           </p>
+          {current?.media && <MediaFigure media={current.media} />}
         </Card>
         {errorBox}
         {current && (
@@ -510,8 +562,11 @@ export function StationClient({
     return (
       <Card className="items-center py-12 text-center">
         <Loader2 className="size-10 animate-spin text-brand-purple motion-reduce:animate-none" aria-hidden />
-        <CardTitle className="text-2xl">The examiner is writing your report…</CardTitle>
-        <CardDescription>Marking every rubric item against your transcript. This usually takes under a minute.</CardDescription>
+        <CardTitle className="text-2xl">{timedOut ? "Time's up!" : "The examiner is writing your report…"}</CardTitle>
+        <CardDescription>
+          {timedOut ? "The examiner is marking what you completed. " : ""}Marking every rubric item against your transcript. This usually takes
+          under a minute.
+        </CardDescription>
       </Card>
     );
   }
@@ -548,6 +603,19 @@ export function StationClient({
         <Link href="/hub">Back to the hub</Link>
       </Button>
     </Card>
+  );
+}
+
+/** A case image (reading material or an examiner item), from a short-lived signed link. */
+function MediaFigure({ media }: { media: Media }) {
+  return (
+    <figure className="space-y-1.5">
+      <a href={media.url} target="_blank" rel="noreferrer" title="Open full size">
+        {/* eslint-disable-next-line @next/next/no-img-element -- signed storage URLs, not optimisable */}
+        <img src={media.url} alt={media.alt} className="max-h-[50dvh] w-full rounded-xl border bg-white object-contain" />
+      </a>
+      {media.caption && <figcaption className="text-sm text-muted-foreground">{media.caption}</figcaption>}
+    </figure>
   );
 }
 

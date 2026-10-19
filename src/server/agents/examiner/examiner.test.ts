@@ -45,8 +45,8 @@ describe("examiner prompts", () => {
   it("accepts only the rubric's item keys", () => {
     const schema = assessorOutput(input.rubric.items.map((i) => i.key));
     const base = { global_rating: "pass", strengths: [], improvements: [], missed_questions: [], missed_red_flags: [], revision_topics: [], examiner_comment: "" };
-    expect(schema.safeParse({ ...base, items: [{ key: "bowel_habit", outcome: "met", evidence: "x" }] }).success).toBe(true);
-    expect(schema.safeParse({ ...base, items: [{ key: "made_up", outcome: "met", evidence: "x" }] }).success).toBe(false);
+    expect(schema.safeParse({ ...base, items: [{ key: "bowel_habit", outcome: "met", points: 1, evidence: "x" }] }).success).toBe(true);
+    expect(schema.safeParse({ ...base, items: [{ key: "made_up", outcome: "met", points: 1, evidence: "x" }] }).success).toBe(false);
   });
 });
 

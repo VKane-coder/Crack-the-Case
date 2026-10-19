@@ -29,7 +29,7 @@ export const fakeExaminerLlm: ExaminerLlm = {
     const items = input.rubric.items.map((i) => {
       const found = i.linked_fact_ids.filter((id) => disclosed.has(id)).length;
       const outcome = !i.linked_fact_ids.length ? "partial" : found === i.linked_fact_ids.length ? "met" : found ? "partial" : "not_met";
-      return { key: i.key, outcome: outcome as "met" | "partial" | "not_met", evidence: "" };
+      return { key: i.key, outcome: outcome as "met" | "partial" | "not_met", points: i.max_points / 2, evidence: "" };
     });
     const met = items.filter((i) => i.outcome === "met").length / Math.max(1, items.length);
     return {

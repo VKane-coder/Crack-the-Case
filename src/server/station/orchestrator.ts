@@ -4,7 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { PATIENT_PROMPT_VERSION, type ChatTurn, type Emotion, type PatientEvent } from "@/server/agents/patient";
 import { costUsd } from "@/server/agents/shared/models";
 import { leakTerms, type PatientView } from "@/server/cases/projector";
-import type { CaseContent } from "@/server/cases/schema";
+import { DEFAULT_STATION, type CaseContent } from "@/server/cases/schema";
 import { sttUsdPerMinute, ttsAvailable, ttsUsdPer1kChars, voiceFake } from "@/server/voice/config";
 import { elevenLabsSynthesize, fakeSynthesize, resolveVoiceId } from "@/server/voice/elevenlabs";
 import { TtsPipeline, type AudioEvent, type Synthesize } from "@/server/voice/tts-pipeline";
@@ -42,18 +42,31 @@ export type Consultation = {
   user_id: string;
   case_version_id: string;
   status: ConsultationStatus;
-  station_config: { history_seconds?: number; presentation_seconds?: number };
+  /** history_/presentation_seconds: stations created before the single station clock. */
+  station_config: { reading_seconds?: number; station_seconds?: number; history_seconds?: number; presentation_seconds?: number };
   history_started_at: string | null;
   phase_deadline_at: string | null;
+  station_deadline_at: string | null;
   disclosed_fact_ids: string[];
 };
+
+/** Station clock length; mirrors public.station_seconds() in the database. */
+export function stationSeconds(config: Consultation["station_config"]) {
+  return config.station_seconds ?? (config.history_seconds ?? 300) + (config.presentation_seconds ?? 180);
+}
+
+/** True once the station clock (plus a little grace for in-flight requests) has run out. */
+export function clockExpired(station: Pick<Consultation, "station_deadline_at" | "phase_deadline_at">, now = Date.now()) {
+  const deadline = station.station_deadline_at ?? station.phase_deadline_at;
+  return deadline !== null && now > Date.parse(deadline) + GRACE_SECONDS * 1000;
+}
 
 export type Db = SupabaseClient;
 
 export async function loadOwned(db: Db, userId: string, id: string): Promise<Consultation> {
   const { data, error } = await db
     .from("consultations")
-    .select("id, user_id, case_version_id, status, station_config, history_started_at, phase_deadline_at, disclosed_fact_ids")
+    .select("id, user_id, case_version_id, status, station_config, history_started_at, phase_deadline_at, station_deadline_at, disclosed_fact_ids")
     .eq("id", id)
     .eq("user_id", userId)
     .maybeSingle();
@@ -75,15 +88,43 @@ export async function transition(db: Db, id: string, from: ConsultationStatus, t
 export async function caseVersion(db: Db, caseVersionId: string) {
   const { data, error } = await db
     .from("case_versions")
-    .select("content, patient_view, rubric_version_id")
+    .select("content, patient_view, rubric_version_id, cases!case_versions_case_id_fkey(voice_id, avatar_path)")
     .eq("id", caseVersionId)
     .single();
   if (error) throw error;
+  const extras = data.cases as unknown as { voice_id: string | null; avatar_path: string | null } | null;
   return {
     content: data.content as CaseContent,
     patientView: data.patient_view as PatientView,
     rubricVersionId: data.rubric_version_id as string,
+    /** The case's own ElevenLabs voice, when the author set one. */
+    voiceId: extras?.voice_id ?? null,
+    avatarPath: extras?.avatar_path ?? null,
   };
+}
+
+// Images ---------------------------------------------------------------------------------------
+
+const MEDIA_BUCKET = "case-media";
+const MEDIA_URL_SECONDS = 15 * 60;
+
+/** A short-lived link to a private case image, or null if it's missing (the station carries on without it). */
+export async function signedMediaUrl(db: Db, path: string): Promise<string | null> {
+  const { data, error } = await db.storage.from(MEDIA_BUCKET).createSignedUrl(path, MEDIA_URL_SECONDS);
+  if (error) console.warn("case image unavailable", { path, message: error.message });
+  return data?.signedUrl ?? null;
+}
+
+/** avatar_path is "<bucket>/<path>": a public bucket gives a plain URL, a private one a signed link. */
+export async function avatarUrl(db: Db, avatarPath: string | null): Promise<string | null> {
+  if (!avatarPath) return null;
+  const slash = avatarPath.indexOf("/");
+  if (slash < 1) return null;
+  const bucket = avatarPath.slice(0, slash);
+  const path = avatarPath.slice(slash + 1);
+  const signed = await db.storage.from(bucket).createSignedUrl(path, 60 * 60);
+  if (signed.data?.signedUrl) return signed.data.signedUrl;
+  return db.storage.from(bucket).getPublicUrl(path).data.publicUrl;
 }
 
 /** Abandons any live station, then creates a new one for the case's current published version. */
@@ -109,14 +150,14 @@ export async function startConsultation(userId: string, caseSlug: string): Promi
     });
   }
 
-  const station = version.content.meta.station;
+  const station = { ...DEFAULT_STATION, ...version.content.meta.station };
   const { data: created, error: insertError } = await db
     .from("consultations")
     .insert({
       user_id: userId,
       organization_id: profile?.organization_id ?? null,
       case_version_id: c.current_version_id,
-      station_config: { history_seconds: station.history_seconds, presentation_seconds: station.presentation_seconds },
+      station_config: { reading_seconds: station.reading_seconds, station_seconds: station.station_seconds },
     })
     .select("id")
     .single();
@@ -216,7 +257,7 @@ export async function insertMessage(
 export async function loadStation(userId: string, id: string, userDb: Db) {
   const { data: station, error } = await userDb
     .from("consultations")
-    .select("id, status, case_version_id, station_config, history_started_at, history_ended_at, phase_deadline_at")
+    .select("id, status, case_version_id, station_config, started_at, history_started_at, history_ended_at, phase_deadline_at, station_deadline_at")
     .eq("id", id)
     .eq("user_id", userId)
     .maybeSingle();
@@ -229,30 +270,65 @@ export async function loadStation(userId: string, id: string, userDb: Db) {
     userDb.from("examiner_questions").select("ord, question, answered_at").eq("consultation_id", id).order("ord"),
   ]);
   // Students can't read case_versions (it holds the diagnosis); pick out only pre-station fields.
-  const { content, patientView } = await caseVersion(createAdminClient(), station.case_version_id);
+  const admin = createAdminClient();
+  const { content, patientView, avatarPath } = await caseVersion(admin, station.case_version_id);
+  const config = station.station_config as Consultation["station_config"];
+  const reading = content.reading ?? { tasks: [], media: [] };
+  const [readingMedia, avatar] = await Promise.all([
+    Promise.all(reading.media.map(async (m) => ({ url: await signedMediaUrl(admin, m.path), alt: m.alt, caption: m.caption ?? null }))),
+    avatarUrl(admin, avatarPath),
+  ]);
+  // The image for the question being asked now, if any (a reload mid-question still shows it).
+  const current = (questions ?? []).find((q) => q.answered_at === null);
+  let currentMedia: { ord: number; url: string; alt: string; caption: string | null } | null = null;
+  if (current && station.status === "examiner_questions") {
+    const { data: row } = await admin
+      .from("examiner_questions")
+      .select("media_path, item_key")
+      .eq("consultation_id", id)
+      .eq("ord", current.ord)
+      .maybeSingle();
+    const url = row?.media_path ? await signedMediaUrl(admin, row.media_path) : null;
+    const item = content.examiner_items?.find((i) => i.key === row?.item_key);
+    if (url) currentMedia = { ord: current.ord, url, alt: item?.media?.alt ?? "Image for this question", caption: item?.media?.caption ?? null };
+  }
+  const media = currentMedia as { ord: number; url: string; alt: string; caption: string | null } | null;
+  const startedAt = station.started_at as string | null;
+  const readingSeconds = config.reading_seconds ?? DEFAULT_STATION.reading_seconds;
   return {
     id: station.id as string,
     status: station.status as ConsultationStatus,
-    deadline: station.phase_deadline_at as string | null,
-    historySeconds: (station.station_config as Consultation["station_config"]).history_seconds ?? 300,
-    presentationSeconds: (station.station_config as Consultation["station_config"]).presentation_seconds ?? 180,
+    /** The station clock: set when the patient stage starts, unchanged through the examiner stages. */
+    deadline: (station.station_deadline_at ?? station.phase_deadline_at) as string | null,
+    /** When reading time ends (counted from when the station was opened). */
+    readingEndsAt: startedAt ? new Date(Date.parse(startedAt) + readingSeconds * 1000).toISOString() : null,
+    readingSeconds,
+    stationSeconds: stationSeconds(config),
     historyStartedAt: station.history_started_at as string | null,
     historyEndedAt: station.history_ended_at as string | null,
     title: content.meta.title,
     brief: content.candidate_brief,
-    patient: { name: patientView.name, age: patientView.age },
+    task: content.assessment_task,
+    tasks: reading.tasks,
+    readingMedia: readingMedia.filter((m) => m.url) as { url: string; alt: string; caption: string | null }[],
+    patient: { name: patientView.name, age: patientView.age, avatarUrl: avatar },
     messages: (messages ?? []) as Row[],
     presentation: (presentation ?? []).map((m) => m.content as string),
-    questions: (questions ?? []).map((q) => ({ ord: q.ord as number, text: q.question as string, answered: q.answered_at !== null })),
+    questions: (questions ?? []).map((q) => ({
+      ord: q.ord as number,
+      text: q.question as string,
+      answered: q.answered_at !== null,
+      media: media && media.ord === q.ord ? { url: media.url, alt: media.alt, caption: media.caption } : null,
+    })),
   };
 }
 
 export type StationData = NonNullable<Awaited<ReturnType<typeof loadStation>>>;
 
-/** "done" means the turn is saved and the next one may start; audio and logging can still follow. */
 /** Milliseconds from the start of the turn's server work, sent once with the first audio (for latency tuning). */
 export type TurnTiming = { type: "timing"; readyMs: number; firstTextMs: number | null; firstAudioMs: number; region: string | null };
 
+/** "done" means the turn is saved and the next one may start; audio and logging can still follow. */
 export type TurnEvent = PatientEvent | AudioEvent | TurnTiming | { type: "voice_error"; code: string } | { type: "done" };
 
 /** Longest speech-to-text duration we'll log for one utterance (the value is client-reported). */
@@ -280,14 +356,14 @@ export async function patientTurn(
   const station = await loadOwned(db, userId, id);
   if (station.status !== "history") throw new StationError("wrong_phase", "The patient isn't taking questions right now.");
   const now = Date.now();
-  const deadline = station.phase_deadline_at ? Date.parse(station.phase_deadline_at) : Infinity;
-  if (now > deadline + GRACE_SECONDS * 1000) {
-    await endHistory(userId, id);
-    throw new StationError("phase_over", "Time's up for the history.");
-  }
+  // Out of time: the browser then finishes the station, which goes straight to marking.
+  if (clockExpired(station, now)) throw new StationError("phase_over", "Time's up.");
 
   // Independent reads in parallel: every round trip here delays the patient's first word.
-  const [before, { content, patientView }] = await Promise.all([historyMessages(db, id), caseVersion(db, station.case_version_id)]);
+  const [before, { content, patientView, voiceId: caseVoiceId }] = await Promise.all([
+    historyMessages(db, id),
+    caseVersion(db, station.case_version_id),
+  ]);
   const readyMs = Date.now() - startedAt;
   const replayIdx = before.findIndex((m) => m.role === "student" && m.client_seq === input.clientSeq);
   if (replayIdx >= 0) {
@@ -310,12 +386,17 @@ export async function patientTurn(
     ...before.slice(1).map((m) => ({ role: m.role, content: m.content })),
     { role: "student" as const, content: utterance },
   ];
-  const limit = station.station_config.history_seconds ?? 300;
+  const limit = stationSeconds(station.station_config);
   const elapsed = station.history_started_at ? (now - Date.parse(station.history_started_at)) / 1000 : 0;
 
   // Voice out: each sentence that passes the guardrail is synthesised while the next is generated.
   // The voice lookup (first turn on a fresh server only) runs alongside generation, not before it.
-  const voiceId = input.voice && ttsAvailable() && !voiceFake() ? resolveVoiceId(content.patient.voice_profile) : null;
+  const voiceId =
+    input.voice && ttsAvailable() && !voiceFake()
+      ? caseVoiceId
+        ? Promise.resolve(caseVoiceId)
+        : resolveVoiceId(content.patient.voice_profile)
+      : null;
   voiceId?.catch(() => {}); // a failed lookup surfaces through the first sentence's synthesis
   const synthesize: Synthesize | null = voiceFake()
     ? input.voice ? fakeSynthesize() : null

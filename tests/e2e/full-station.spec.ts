@@ -23,12 +23,10 @@ test("history → presentation → examiner questions → report", async ({ page
     // "listening" returns only after the stream ends, i.e. once the server has stored the turn.
     await expect(page.getByText("listening")).toBeVisible();
   }
-  await page.getByRole("button", { name: "End history and move on" }).click();
+  await page.getByRole("button", { name: "Move to the examiner" }).click();
 
-  // Presentation: the examiner listens without replying.
-  await expect(page.getByText("History complete")).toBeVisible();
-  await page.getByRole("button", { name: "Start presenting" }).click();
-  await expect(page.getByRole("timer", { name: /Presentation/ })).toBeVisible();
+  // Presentation: the examiner listens without replying, on the same station clock.
+  await expect(page.getByRole("timer", { name: /Station/ })).toBeVisible();
   const present = page.getByLabel("Your presentation");
   for (const part of [
     "Margaret is a 64-year-old woman with three months of looser, more frequent stools and weight loss.",

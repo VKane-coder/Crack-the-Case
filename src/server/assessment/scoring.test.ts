@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { checkAgainstDisclosures, scoreAssessment, type ScoringRubric } from "./scoring";
+import { checkAgainstDisclosures, pointsFor, scoreAssessment, type ScoringRubric } from "./scoring";
 
 const rubric: ScoringRubric = {
   pass_mark: 55,
@@ -59,5 +59,34 @@ describe("scoreAssessment", () => {
     expect(s.items[3]).toMatchObject({ outcome: "not_met", adjustment: "Not assessed." });
     expect(s.criticalMissed).toEqual(["red_flags"]);
     expect(s.passed).toBe(false);
+  });
+});
+
+describe("partial points and points-only rubrics", () => {
+  const items = [
+    { key: "hpc", domain: "history", label: "HPC", max_points: 5, linked_fact_ids: [], is_critical: false },
+    { key: "ddx", domain: "differentials", label: "Differentials", max_points: 3, linked_fact_ids: [], is_critical: false },
+  ];
+
+  it("uses the assessor's partial points, rounded to half marks and kept inside the outcome", () => {
+    expect(pointsFor(5, "partial", 3.2)).toBe(3);
+    expect(pointsFor(5, "partial", 5)).toBe(4.5);
+    expect(pointsFor(5, "partial", 0)).toBe(0.5);
+    expect(pointsFor(5, "partial", undefined)).toBe(2.5);
+    expect(pointsFor(5, "met", 1)).toBe(5);
+    expect(pointsFor(5, "not_met", 4)).toBe(0);
+  });
+
+  it("scores total marks over total available when the rubric has no domain weights", () => {
+    const s = scoreAssessment(
+      { items, domain_weights: {}, pass_mark: 50 },
+      [
+        { key: "hpc", outcome: "partial", points: 3, evidence: "" },
+        { key: "ddx", outcome: "met", evidence: "" },
+      ],
+      [],
+    );
+    expect(s.overallPct).toBe(75); // (3 + 3) / 8
+    expect(s.passed).toBe(true);
   });
 });

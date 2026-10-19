@@ -9,17 +9,22 @@ import { stationXp } from "@/server/gamification/xp";
 import { examinerLlm } from "./llm";
 import {
   caseVersion,
-  GRACE_SECONDS,
+  clockExpired,
+  endHistory,
   insertMessage,
   loadOwned,
   MAX_UTTERANCE_CHARS,
   phaseMessages,
+  signedMediaUrl,
   StationError,
   transition,
+  type ConsultationStatus,
   type Db,
 } from "./orchestrator";
 
-// Presentation → examiner questions → assessment (docs/architecture.md §2.3, §3.3, §6).
+// Presentation → examiner questions → assessment (docs/architecture.md §2.3, §3.3, §6). All of it
+// runs on the station clock that started with the patient; when it runs out, finishStation moves
+// the station straight to marking from wherever the student was.
 
 export const MAX_ASSESSMENT_ATTEMPTS = 3;
 const MAX_SEGMENTS = 40;
@@ -117,8 +122,7 @@ export async function addPresentationSegment(userId: string, id: string, input: 
   const db = createAdminClient();
   const station = await loadOwned(db, userId, id);
   if (station.status !== "presentation") throw new StationError("wrong_phase", "The presentation isn't running.");
-  const deadline = station.phase_deadline_at ? Date.parse(station.phase_deadline_at) : Infinity;
-  if (Date.now() > deadline + GRACE_SECONDS * 1000) throw new StationError("phase_over", "Time's up for the presentation.");
+  if (clockExpired(station)) throw new StationError("phase_over", "Time's up.");
   const existing = await phaseMessages(db, id, "presentation");
   if (existing.some((m) => m.client_seq === input.clientSeq)) return { stored: false };
   if (existing.length >= MAX_SEGMENTS) throw new StationError("invalid_input", "That's a long presentation! Time to wrap up.");
@@ -133,22 +137,39 @@ export async function addPresentationSegment(userId: string, id: string, input: 
 
 // Examiner questions -----------------------------------------------------------------------------
 
-type Question = { ord: number; question: string; answered: boolean };
+type Question = { ord: number; question: string; answered: boolean; mediaPath: string | null; itemKey: string | null };
 
 async function questions(db: Db, id: string): Promise<Question[]> {
-  const { data, error } = await db.from("examiner_questions").select("ord, question, answered_at").eq("consultation_id", id).order("ord");
+  const { data, error } = await db
+    .from("examiner_questions")
+    .select("ord, question, answered_at, media_path, item_key")
+    .eq("consultation_id", id)
+    .order("ord");
   if (error) throw error;
-  return data.map((q) => ({ ord: q.ord, question: q.question, answered: q.answered_at !== null }));
+  return data.map((q) => ({ ord: q.ord, question: q.question, answered: q.answered_at !== null, mediaPath: q.media_path, itemKey: q.item_key }));
 }
 
-function nextQuestion(qs: Question[]) {
+export type QuestionMedia = { url: string; alt: string; caption: string | null };
+
+/** The image for an author-written question, signed only once that question is being asked. */
+export async function questionMedia(db: Db, caseVersionId: string, q: { mediaPath: string | null; itemKey: string | null }): Promise<QuestionMedia | null> {
+  if (!q.mediaPath) return null;
+  const [url, { content }] = await Promise.all([signedMediaUrl(db, q.mediaPath), caseVersion(db, caseVersionId)]);
+  if (!url) return null;
+  const item = content.examiner_items?.find((i) => i.key === q.itemKey);
+  return { url, alt: item?.media?.alt ?? "Image for this question", caption: item?.media?.caption ?? null };
+}
+
+async function nextQuestion(db: Db, caseVersionId: string, qs: Question[]) {
   const next = qs.find((q) => !q.answered);
-  return { question: next ? { ord: next.ord, text: next.question } : null, total: qs.length };
+  const media = next ? await questionMedia(db, caseVersionId, next) : null;
+  return { question: next ? { ord: next.ord, text: next.question, media } : null, total: qs.length };
 }
 
 /**
- * presentation → examiner_questions. Compiles the presentation transcript and asks the questioner
- * for 1–3 questions (falling back to the case's question bank if the model fails). Idempotent.
+ * presentation → examiner_questions. Compiles the presentation transcript, then sets the questions:
+ * the case author's examiner items when the case has them, otherwise 1–3 from the questioner
+ * (falling back to the case's question bank if the model fails). Idempotent.
  */
 export async function endPresentation(userId: string, id: string, llm: ExaminerLlm = examinerLlm()) {
   const db = createAdminClient();
@@ -162,7 +183,7 @@ export async function endPresentation(userId: string, id: string, llm: ExaminerL
   if (station.status !== "examiner_questions") throw new StationError("wrong_phase", "The presentation isn't running.");
 
   const existing = await questions(db, id);
-  if (existing.length) return nextQuestion(existing);
+  if (existing.length) return nextQuestion(db, station.case_version_id, existing);
 
   const { input, rubric } = await examinerInput(db, station);
   const text = input.transcripts.presentation.join("\n");
@@ -172,6 +193,23 @@ export async function endPresentation(userId: string, id: string, llm: ExaminerL
       { consultation_id: id, kind: "presentation", text, word_count: text.split(/\s+/).filter(Boolean).length, compiled_at: new Date().toISOString() },
       { onConflict: "consultation_id,kind" },
     );
+
+  const authored = input.content.examiner_items ?? [];
+  if (authored.length) {
+    const { error } = await db.from("examiner_questions").insert(
+      authored.map((item, i) => ({
+        consultation_id: id,
+        ord: i + 1,
+        question: item.prompt,
+        rationale: "case author's examiner item",
+        item_key: item.key,
+        media_path: item.media?.path ?? null,
+        targeted_rubric_item_ids: rubric.ids.has(item.key) ? [rubric.ids.get(item.key)!] : [],
+      })),
+    );
+    if (error && error.code !== "23505") throw error;
+    return nextQuestion(db, station.case_version_id, await questions(db, id));
+  }
 
   let generated: { question: string; rationale: string; targets: string[] }[];
   try {
@@ -198,7 +236,7 @@ export async function endPresentation(userId: string, id: string, llm: ExaminerL
   );
   // A concurrent request may have inserted them first; either way, read back what's stored.
   if (error && error.code !== "23505") throw error;
-  return nextQuestion(await questions(db, id));
+  return nextQuestion(db, station.case_version_id, await questions(db, id));
 }
 
 /** Stores the answer to one question and returns the next, or null when they're all answered. */
@@ -208,6 +246,7 @@ export async function answerQuestion(userId: string, id: string, input: { ord: n
   const db = createAdminClient();
   const station = await loadOwned(db, userId, id);
   if (station.status !== "examiner_questions") throw new StationError("wrong_phase", "The examiner isn't asking questions right now.");
+  if (clockExpired(station)) throw new StationError("phase_over", "Time's up.");
   const { error } = await db
     .from("examiner_questions")
     .update({ answer_transcript: answer, answered_at: new Date().toISOString() })
@@ -215,19 +254,33 @@ export async function answerQuestion(userId: string, id: string, input: { ord: n
     .eq("ord", input.ord)
     .is("answered_at", null);
   if (error) throw error;
-  return nextQuestion(await questions(db, id));
+  return nextQuestion(db, station.case_version_id, await questions(db, id));
 }
 
 // Assessment ---------------------------------------------------------------------------------
 
-/** examiner_questions → assessing. Call runAssessment afterwards (in the background). Idempotent. */
+const MARKABLE: ConsultationStatus[] = ["history", "history_ended", "presentation", "examiner_questions"];
+
+/**
+ * → assessing, after the last examiner question or when the station clock runs out (from whichever
+ * stage the student was in; the stages they didn't reach simply earn no marks). Before the clock runs
+ * out, only a finished examiner stage can be marked. Call runAssessment afterwards. Idempotent.
+ */
 export async function finishStation(userId: string, id: string) {
   const db = createAdminClient();
   const station = await loadOwned(db, userId, id);
-  if (station.status === "examiner_questions") {
-    await transition(db, id, "examiner_questions", "assessing").catch((e) => {
-      if (!(e instanceof StationError)) throw e;
-    });
+  if (MARKABLE.includes(station.status)) {
+    if (station.status !== "examiner_questions" && !clockExpired(station, Date.now() + 5_000)) {
+      throw new StationError("wrong_phase", "There's still time on the clock.");
+    }
+    // The history transcript is compiled when the history ends; do that first if time ran out mid-history.
+    if (station.status === "history") await endHistory(userId, id).catch(() => {});
+    const current = await loadOwned(db, userId, id);
+    if (MARKABLE.includes(current.status)) {
+      await transition(db, id, current.status, "assessing").catch((e) => {
+        if (!(e instanceof StationError)) throw e;
+      });
+    }
   } else if (!["assessing", "completed"].includes(station.status)) {
     throw new StationError("wrong_phase", "There's nothing to assess yet.");
   }

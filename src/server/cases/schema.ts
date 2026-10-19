@@ -25,7 +25,29 @@ export const factSchema = z.object({
   content: z.string().min(3),
   disclosure: z.enum(DISCLOSURE_TIERS),
   is_red_flag: z.boolean().default(false),
+  /** A question the student might ask that this fact answers (author-supplied cases have one per fact). */
+  prompt: z.string().optional(),
 });
+
+/** An image in the private case-media bucket, shown at a set point in the station. */
+export const mediaSchema = z.object({
+  path: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9 ._()\/-]*\.(png|jpe?g|webp|gif)$/i),
+  alt: z.string().min(3),
+  caption: z.string().optional(),
+});
+
+/**
+ * Something the examiner asks after the presentation: a question, optionally about an image, with
+ * the answer the author expects. Marked by the rubric item with the same key.
+ */
+export const examinerItemSchema = z.object({
+  key,
+  prompt: z.string().min(5),
+  media: mediaSchema.optional(),
+  model_answer: z.array(z.string().min(1)).min(1),
+});
+
+export const DEFAULT_STATION = { reading_seconds: 120, station_seconds: 480 } as const;
 
 export const caseContentSchema = z
   .object({
@@ -34,20 +56,27 @@ export const caseContentSchema = z
       title: z.string().min(3),
       specialty: slug,
       difficulty: z.number().int().min(1).max(5),
+      /** Reading time, then one station clock across the patient and examiner stages. */
       station: z
         .object({
-          history_seconds: z.number().int().min(60).max(1200).default(300),
-          presentation_seconds: z.number().int().min(60).max(600).default(180),
+          reading_seconds: z.number().int().min(30).max(600).default(DEFAULT_STATION.reading_seconds),
+          station_seconds: z.number().int().min(120).max(1800).default(DEFAULT_STATION.station_seconds),
         })
-        .default({ history_seconds: 300, presentation_seconds: 180 }),
-      learning_objectives: z.array(z.string()).min(1),
+        .default({ ...DEFAULT_STATION }),
+      learning_objectives: z.array(z.string()).default([]),
       tags: z.array(z.string()).default([]),
-      references: z.array(z.string()).min(1),
+      references: z.array(z.string()).default([]),
       review_status: z.enum(["draft", "pending_clinician_review", "clinician_reviewed"]),
     }),
     /** Shown to the student during reading time. */
     candidate_brief: z.string().min(20),
     assessment_task: z.string().min(10),
+    /** The task list and any images shown during reading time. */
+    reading: z
+      .object({ tasks: z.array(z.string().min(3)).default([]), media: z.array(mediaSchema).default([]) })
+      .default({ tasks: [], media: [] }),
+    /** Author-written examiner questions. Without any, the examiner writes its own after the presentation. */
+    examiner_items: z.array(examinerItemSchema).max(10).default([]),
     patient: z.object({
       name: z.string(),
       age: z.number().int().min(0).max(110),
@@ -55,13 +84,16 @@ export const caseContentSchema = z
       pronouns: z.string().optional(),
       occupation: z.string(),
       background: z.string().optional(),
-      voice_profile: z.string(),
+      /** Describes the voice for auto-picking one; cases.voice_id (set per case) takes precedence. */
+      voice_profile: z.string().default(""),
       persona: z.enum(PERSONALITIES),
       persona_notes: z.string(),
       opening_statement: z.string(),
-      presenting_complaint: z.record(z.string(), z.string()),
+      presenting_complaint: z.record(z.string(), z.string()).default({}),
       facts: z.array(factSchema).min(5),
-      ice: z.object({ ideas: z.string(), concerns: z.string(), expectations: z.string() }),
+      ice: z
+        .object({ ideas: z.string(), concerns: z.string(), expectations: z.string() })
+        .default({ ideas: "Not stated.", concerns: "Not stated.", expectations: "Not stated." }),
       behaviour_rules: z.array(z.string()).default([]),
     }),
     /** Examiner-only. Never reaches the patient agent or the browser before completion. */
@@ -76,10 +108,10 @@ export const caseContentSchema = z
             discriminating_features: z.string(),
           }),
         )
-        .min(2),
-      red_flags: z.array(z.object({ fact_id: key, why: z.string() })),
-      expected_investigations: z.array(z.string()).min(1),
-      expected_management: z.array(z.string()).min(1),
+        .min(1),
+      red_flags: z.array(z.object({ fact_id: key, why: z.string() })).default([]),
+      expected_investigations: z.array(z.string()).default([]),
+      expected_management: z.array(z.string()).default([]),
       safety_netting: z.array(z.string()).default([]),
     }),
   })

@@ -24,7 +24,8 @@ export type ScoringRubric = {
   pass_mark: number;
 };
 
-export type Judgement = { key: string; outcome: Outcome; evidence: string };
+/** points: what the assessor would award; only used for partial outcomes, and always clamped. */
+export type Judgement = { key: string; outcome: Outcome; evidence: string; points?: number };
 
 export type ItemScore = {
   key: string;
@@ -54,6 +55,18 @@ const round2 = (n: number) => Math.round(n * 100) / 100;
 const POINTS: Record<Outcome, number> = { met: 1, partial: 0.5, not_met: 0 };
 
 /**
+ * Points for one item. Met and not met are all or nothing. Partial uses the assessor's points,
+ * rounded to the nearest half mark and kept strictly between 0 and the maximum (so it can't
+ * contradict the outcome); without a usable number it's half marks.
+ */
+export function pointsFor(max: number, outcome: Outcome, suggested?: number): number {
+  if (outcome !== "partial") return round2(max * POINTS[outcome]);
+  if (suggested === undefined || !Number.isFinite(suggested) || max <= 1) return round2(max * POINTS.partial);
+  const halves = Math.round(suggested * 2) / 2;
+  return round2(Math.min(max - 0.5, Math.max(0.5, halves)));
+}
+
+/**
  * Applies the disclosure check to one judgement. "Met" needs every linked fact disclosed; with only
  * some disclosed it becomes "partial"; with none it becomes "not met". Items without linked facts
  * (communication, reasoning) are left to the assessor's judgement.
@@ -80,7 +93,8 @@ export function scoreAssessment(rubric: ScoringRubric, judgements: Judgement[], 
       domain: item.domain,
       label: item.label,
       outcome: checked.outcome,
-      points: round2(item.max_points * POINTS[checked.outcome]),
+      // A disclosure-check downgrade leaves the assessor's number behind: it was for a better outcome.
+      points: pointsFor(item.max_points, checked.outcome, checked.adjustment ? undefined : j?.points),
       max: item.max_points,
       evidence: j?.evidence ?? "",
       is_critical: item.is_critical,
@@ -103,6 +117,7 @@ export function scoreAssessment(rubric: ScoringRubric, judgements: Judgement[], 
   }));
 
   // Weighted mean of domain percentages, over the weighted domains this rubric actually has items for.
+  // Rubrics without domain weights (author-supplied mark schemes) score total marks over total available.
   let weighted = 0;
   let weightSum = 0;
   for (const d of domains) {
@@ -110,7 +125,14 @@ export function scoreAssessment(rubric: ScoringRubric, judgements: Judgement[], 
     weighted += w * d.pct;
     weightSum += w;
   }
-  const overallPct = weightSum > 0 ? round2(weighted / weightSum) : 0;
+  const totalMax = items.reduce((n, i) => n + i.max, 0);
+  const overallPct = Object.keys(rubric.domain_weights).length
+    ? weightSum > 0
+      ? round2(weighted / weightSum)
+      : 0
+    : totalMax > 0
+      ? round2((items.reduce((n, i) => n + i.points, 0) / totalMax) * 100)
+      : 0;
 
   const criticalMissed = items.filter((i) => i.is_critical && i.outcome === "not_met").map((i) => i.key);
   return { items, domains, overallPct, passed: overallPct >= rubric.pass_mark && criticalMissed.length === 0, criticalMissed };
