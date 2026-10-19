@@ -28,7 +28,42 @@ async function post<T>(url: string, body: object = {}): Promise<ApiResult<T>> {
   return res.json().catch(() => ({ error: { code: "network", message: "Couldn't reach the server. Please try again." } }));
 }
 
-export function StationClient({ station, voice }: { station: StationData; voice: { input: boolean; output: boolean } }) {
+type TurnClock = {
+  releasedAt: number | null;
+  sentAt: number;
+  audioAt?: number;
+  server?: { readyMs: number; firstTextMs: number | null; firstAudioMs: number; region: string | null };
+};
+
+const secs = (ms: number) => `${(Math.max(0, ms) / 1000).toFixed(1)}s`;
+
+/** "2.4s to voice: speech-to-text 0.4s · network 0.3s · …" for preview builds, to see where a reply's wait goes. */
+function describeLatency(c: TurnClock, playAt: number) {
+  const parts = [];
+  if (c.releasedAt !== null) parts.push(`speech-to-text ${secs(c.sentAt - c.releasedAt)}`);
+  if (c.server && c.audioAt) {
+    const s = c.server;
+    parts.push(`network + sign-in ${secs(c.audioAt - c.sentAt - s.firstAudioMs)}`);
+    parts.push(`database ${secs(s.readyMs)}`);
+    if (s.firstTextMs !== null) {
+      parts.push(`Claude ${secs(s.firstTextMs - s.readyMs)}`);
+      parts.push(`voice ${secs(s.firstAudioMs - s.firstTextMs)}`);
+    }
+    parts.push(`playback ${secs(playAt - c.audioAt)}`);
+  }
+  const region = c.server?.region ? ` (server ${c.server.region})` : "";
+  return `${secs(playAt - (c.releasedAt ?? c.sentAt))} to voice${region}: ${parts.join(" · ")}`;
+}
+
+export function StationClient({
+  station,
+  voice,
+  showLatency = false,
+}: {
+  station: StationData;
+  voice: { input: boolean; output: boolean };
+  showLatency?: boolean;
+}) {
   const router = useRouter();
   const api = `/api/consultations/${station.id}`;
   const [status, setStatus] = useState(station.status);
@@ -44,11 +79,22 @@ export function StationClient({ station, voice }: { station: StationData; voice:
   const [readingEnds] = useState(() => Date.now() + READING_SECONDS * 1000);
   const [voiceOn, setVoiceOn] = useState(voice.output);
   const [playing, setPlaying] = useState(false);
+  const [voiceError, setVoiceError] = useState<string | null>(null);
+  const [latency, setLatency] = useState<string | null>(null);
+  const clock = useRef<TurnClock | null>(null);
   const ending = useRef(false);
   const logRef = useRef<HTMLDivElement>(null);
   const talk = useRef<TalkControlsHandle>(null);
   const audio = useRef<AudioQueue | null>(null);
-  const player = () => (audio.current ??= new AudioQueue(setPlaying));
+  const player = () =>
+    (audio.current ??= new AudioQueue((p) => {
+      setPlaying(p);
+      // The first sound of a reply ends the measured wait.
+      if (p && clock.current?.audioAt) {
+        setLatency(describeLatency(clock.current, performance.now()));
+        clock.current = null;
+      }
+    }));
   const speaking = status === "history" || status === "presentation" || status === "examiner_questions";
   const speech = useSpeechInput(station.id, voice.input && speaking);
 
@@ -187,6 +233,7 @@ export function StationClient({ station, voice }: { station: StationData; voice:
       setLive(null);
       setMessages((m) => [...m, { role: "patient", content: reply, emotion: replyEmotion }]);
     };
+    clock.current = { releasedAt: spoken?.releasedAt ?? null, sentAt: performance.now() };
     try {
       const res = await fetch(`${api}/patient-turn`, {
         method: "POST",
@@ -203,7 +250,12 @@ export function StationClient({ station, voice }: { station: StationData; voice:
           else if (ev.type === "reset") {
             setLive((reply = ""));
             audio.current?.stop();
-          } else if (ev.type === "audio" && voiceOn) player().enqueue(ev.data, ev.mime);
+          } else if (ev.type === "audio" && voiceOn) {
+            setVoiceError(null);
+            if (clock.current && !clock.current.audioAt) clock.current.audioAt = performance.now();
+            player().enqueue(ev.data, ev.mime);
+          } else if (ev.type === "voice_error") setVoiceError(ev.code);
+          else if (ev.type === "timing" && clock.current) clock.current.server = ev;
           else if (ev.type === "done") commit();
           else if (ev.type === "error") failure = ev;
         });
@@ -331,6 +383,13 @@ export function StationClient({ station, voice }: { station: StationData; voice:
           label="Your question to the patient"
           placeholder={voice.input ? "Or type a question…" : `Ask ${station.patient.name.split(" ")[0]} a question…`}
         />
+        {showLatency && latency && <p className="text-center text-xs text-muted-foreground">{latency}</p>}
+        {voiceOn && voiceError && (
+          <p role="status" className="text-center text-sm text-muted-foreground">
+            {station.patient.name.split(" ")[0]}&apos;s voice isn&apos;t working right now, so replies are text only.{" "}
+            <span className="opacity-70">({voiceError})</span>
+          </p>
+        )}
         <div className="flex flex-wrap items-center justify-center gap-2">
           {voice.output && (
             <Button

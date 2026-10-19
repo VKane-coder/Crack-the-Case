@@ -12,6 +12,14 @@ import type { Synthesize } from "./tts-pipeline";
 export const TTS_MODEL = "eleven_flash_v2_5";
 const OUTPUT_FORMAT = "mp3_44100_64" as const;
 
+/** Tags an ElevenLabs failure with its status and reason (e.g. "elevenlabs_401_missing_permissions"). */
+function tagged(err: unknown): Error {
+  const { statusCode, body } = (err ?? {}) as { statusCode?: number; body?: { detail?: { status?: string } } };
+  const reason = body?.detail?.status;
+  const code = `elevenlabs_${statusCode ?? "network"}${reason ? `_${reason}` : ""}`;
+  return Object.assign(err instanceof Error ? err : new Error(String(err)), { voiceCode: code });
+}
+
 let client: ElevenLabsClient | undefined;
 const elevenlabs = () => (client ??= new ElevenLabsClient({ apiKey: requireServerEnv("ELEVENLABS_API_KEY") }));
 
@@ -39,6 +47,7 @@ const picked = new Map<string, Promise<string | null>>();
  * otherwise the best match on the account (Australian accent, gender, age), chosen once per server.
  */
 export function resolveVoiceId(profile: string): Promise<string | null> {
+  // Rejects (tagged) when the lookup fails, so the reason can reach the student.
   const fixed = voiceIdFor(profile);
   if (fixed) return Promise.resolve(fixed);
   let p = picked.get(profile);
@@ -52,8 +61,9 @@ export function resolveVoiceId(profile: string): Promise<string | null> {
       })
       .catch((err) => {
         picked.delete(profile); // try again next turn
-        console.error("voice lookup failed", { message: err instanceof Error ? err.message : String(err) });
-        return null;
+        const e = tagged(err);
+        console.error("voice lookup failed", { code: (e as { voiceCode?: string }).voiceCode, message: e.message });
+        throw e;
       });
     picked.set(profile, p);
   }
@@ -62,7 +72,8 @@ export function resolveVoiceId(profile: string): Promise<string | null> {
 
 export function elevenLabsSynthesize(voiceId: string): Synthesize {
   return async (text, { emotion, previousText }, signal) => {
-    const stream = await elevenlabs().textToSpeech.stream(
+    const stream = await elevenlabs()
+      .textToSpeech.stream(
       voiceId,
       {
         text,
@@ -73,7 +84,10 @@ export function elevenLabsSynthesize(voiceId: string): Synthesize {
         voiceSettings: { ...voiceSettingsFor(emotion), style: 0, useSpeakerBoost: false },
       },
       { abortSignal: signal, maxRetries: 0, timeoutInSeconds: 15 },
-    );
+    )
+      .catch((err) => {
+        throw tagged(err);
+      });
     return { data: await collect(stream), mime: "audio/mpeg" };
   };
 }

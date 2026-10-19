@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { sttAvailable, sttSettings, voiceFake } from "@/server/voice/config";
 import { mintDeepgramToken, STT_KEYTERMS } from "@/server/voice/deepgram";
-import { stationRoute } from "@/server/station/http";
+import { errorBody, stationRoute } from "@/server/station/http";
 import { requireSpeakingPhase, StationError } from "@/server/station/orchestrator";
 
 // POST { consultationId } → a 30-second Deepgram token plus streaming settings. Only for the
@@ -14,7 +14,17 @@ export const POST = stationRoute<object>(async ({ user, body }) => {
 
   const settings = { ...sttSettings(), keyterms: STT_KEYTERMS };
   if (voiceFake()) return NextResponse.json({ data: { provider: "fake", accessToken: "fake", expiresIn: 30, settings } });
-  const token = await mintDeepgramToken();
+  let token: Awaited<ReturnType<typeof mintDeepgramToken>>;
+  try {
+    token = await mintDeepgramToken();
+  } catch (err) {
+    // Surface Deepgram's status and error code (never the key) so a bad key or missing
+    // permission can be diagnosed from the station screen.
+    const { statusCode, body: dgBody } = err as { statusCode?: number; body?: { err_code?: string; err_msg?: string } };
+    console.error("deepgram token grant failed", { statusCode, err_code: dgBody?.err_code, err_msg: dgBody?.err_msg });
+    const code = `deepgram_${statusCode ?? "network"}${dgBody?.err_code ? `_${dgBody.err_code}` : ""}`;
+    return NextResponse.json(errorBody(code, "Voice input isn't available right now. You can type instead.", true), { status: 502 });
+  }
   return NextResponse.json(
     { data: { provider: "deepgram", ...token, settings } },
     { headers: { "cache-control": "no-store" } },

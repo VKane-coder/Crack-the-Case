@@ -17,7 +17,8 @@ const SPEECH_ERRORS: Record<SpeechError, string> = {
   connection: "Couldn't connect to speech recognition. Try again, or type instead.",
 };
 
-export type Spoken = { text: string; seconds: number };
+/** releasedAt: performance.now() when the talk button was let go (for latency readouts). */
+export type Spoken = { text: string; seconds: number; releasedAt?: number };
 
 export type TalkControlsHandle = { focus: () => void };
 
@@ -63,9 +64,10 @@ export const TalkControls = forwardRef<TalkControlsHandle, Props>(function TalkC
   async function talkUp() {
     if (!talking.current) return;
     talking.current = false;
+    const releasedAt = performance.now();
     const result = await speech.stop();
     if (!result) return;
-    if (result.text) void onSubmit(result.text, result);
+    if (result.text) void onSubmit(result.text, { ...result, releasedAt });
     else onError("Didn't catch that. Hold the button the whole time you're speaking.");
   }
 
@@ -134,6 +136,7 @@ export const TalkControls = forwardRef<TalkControlsHandle, Props>(function TalkC
       {speech.error && (
         <p role="alert" className="rounded-xl bg-destructive/10 p-3 text-sm font-semibold text-destructive">
           {SPEECH_ERRORS[speech.error]}
+          {speech.detail && <span className="ml-1 font-normal opacity-70">({speech.detail})</span>}
         </p>
       )}
 
