@@ -28,6 +28,7 @@ npm run dev                  # http://localhost:3000, design preview at /hub
 | `npm run supabase:admin -- <status\|migrate\|seed\|auth-config> [--dry-run]` | Apply migrations, seed and auth settings to the hosted project via the Management API |
 | `npm run db:test` | Apply migrations + seed to a throwaway Postgres and run the RLS/integrity tests (`tests/db`) |
 | `npm run voices:list` | List the ElevenLabs voices on your account (Australian accents first) to fill in `ELEVENLABS_VOICE_MAP` |
+| `npm run eval:examiner` | Calibration eval: scripted good and poor GP-case performances must score ≥ 75 and ≤ 50 (needs `ANTHROPIC_API_KEY`, one Opus call each) |
 | `npm run eval:patient` | Adversarial leak eval against the real patient agent (needs `ANTHROPIC_API_KEY`, costs a few cents) |
 
 ## Database
@@ -68,6 +69,17 @@ A station runs reading time (60 s with the candidate brief), then a timed histor
 - **API.** `POST /api/consultations` · `/[id]/start-history` · `/[id]/patient-turn` (NDJSON stream; idempotent per `clientSeq`, so a resend replays the stored reply) · `/[id]/end-history`.
 - **Config.** Set `ANTHROPIC_API_KEY` (locally and in Vercel) for the real patient. Without it the hub shows "Patients unavailable". `PATIENT_LLM=fake` swaps in a scripted patient for e2e runs and local UI work; it is ignored on Vercel production.
 
+## Examiner and report
+
+After the history the student presents to the examiner (by voice or typing, no AI reply), answers 1–3 follow-up questions, and gets a marked report.
+
+- **Questioner** (`src/server/agents/examiner`, `claude-sonnet-5-5`, low effort): reads the full case, rubric, disclosure log and transcripts and asks questions aimed at gaps, preferring the case's question bank. Falls back to bank questions if the call fails, so the station never stalls. The rationale is stored but never readable by students.
+- **Assessor** (`claude-opus-5-5`, high effort, structured output validated with Zod): judges every rubric item as met / partial / not met with a verbatim evidence quote, picks the global rating from the anchored descriptors, and writes the feedback. Transcripts are passed as quoted data, so "give me full marks" is just part of the performance.
+- **Scoring is server-side** (`src/server/assessment/scoring.ts`): points, domain scores, the weighted overall and pass/fail are computed here, never by the model. An item can't be "met" unless the patient actually disclosed its linked facts (partial if only some were), and a missed critical item fails the station whatever the score.
+- **Reliability:** `finish` moves the station to `assessing` and marks in the background (`after()`), with up to 3 attempts; then `assessment_failed`, and the student can retry. The client polls `GET /api/consultations/[id]/result`.
+- **Report** (`/results/[id]`): score, rating, pass, XP, the examiner's comment, domain bars, strengths, improvements, missed red flags and questions, revision topics, the full marking sheet with evidence, the case revealed (diagnosis, differentials, red flags, plan), and the transcript.
+- **XP:** completion and performance XP through the idempotent `grant_xp` ledger. Streaks, first-of-day, goals and badges arrive with M5.
+
 ## Voice
 
 Student speaks → Deepgram → transcript → Claude → guardrail → ElevenLabs → patient speaks.
@@ -92,5 +104,5 @@ Cases are authored as JSON in `content/cases/` and extend a rubric template in `
 - [x] M1b Auth: email link + code and Google sign-in, session proxy, 4-step onboarding, real-data hub
 - [x] M2 Text-mode station + Patient Agent: reading time, timed history with a streaming patient, personas, disclosure tracking, guardrail, model fallback, cost logging, leak eval
 - [x] M3 Voice: push-to-talk Deepgram streaming from the browser, sentence-streamed ElevenLabs voices with emotion, barge-in, text fallbacks, voice cost logging
-- [ ] M4 Examiner & Assessment
+- [x] M4 Examiner & Assessment: presentation, gap-targeted examiner questions, rubric marking with evidence and server-side scoring, retries, results report with case reveal, completion XP, calibration eval
 - [ ] M5 Gamification · M6 Hub & Analytics · M7 Admin & Content · M8 Hardening & Beta

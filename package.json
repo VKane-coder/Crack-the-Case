@@ -15,7 +15,8 @@
     "test:e2e": "playwright test",
     "supabase:admin": "tsx scripts/supabase-admin.ts",
     "eval:patient": "tsx --conditions=react-server evals/patient-leak.ts",
-    "voices:list": "tsx scripts/list-voices.ts"
+    "voices:list": "tsx scripts/list-voices.ts",
+    "eval:examiner": "tsx --conditions=react-server evals/examiner-bands.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.135.0",
