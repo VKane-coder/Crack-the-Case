@@ -125,11 +125,13 @@ flowchart LR
 stateDiagram-v2
   [*] --> created
   created --> briefing: start()
-  briefing --> history: begin_history (reading time done)
-  history --> history_ended: timer 5:00 OR student ends
-  history_ended --> presentation: begin_presentation
-  presentation --> examiner_questions: timer 3:00 OR student ends
-  examiner_questions --> assessing: 1–3 Qs answered
+  briefing --> history: begin_history (reading time 2:00 done, station clock 8:00 starts)
+  history --> history_ended: student moves to the examiner
+  history_ended --> presentation: begin_presentation (same clock)
+  presentation --> examiner_questions: student ends presenting
+  examiner_questions --> assessing: examiner items answered
+  history --> assessing: station clock ran out
+  presentation --> assessing: station clock ran out
   assessing --> completed: assessment stored + rewards granted
   assessing --> assessment_failed: retries exhausted
   assessment_failed --> assessing: retry job
@@ -137,6 +139,8 @@ stateDiagram-v2
   presentation --> abandoned
   completed --> [*]
 ```
+One station clock (`consultations.station_deadline_at`, 8 minutes by default, set per case in `meta.station`) starts with the patient and runs unchanged through the examiner stages. When it runs out the station goes straight to marking from whichever stage the student was in; stages they didn't reach earn no marks. After the presentation the examiner asks the case's own `examiner_items` (author-written questions, optionally with an image from the private `case-media` bucket, marked against a model answer); cases without them fall back to questions written by the questioner model. How authors write cases is in [case-authoring.md](case-authoring.md).
+
 Every transition is a single SQL update guarded by `WHERE status = <expected>`. That makes concurrent transitions safe without locks and gives a clean resume point after a reconnect. The server allows a ±5-second grace period on timers, so turns that arrive after `phase_deadline_at + grace` are rejected.
 
 ---
@@ -616,7 +620,7 @@ crack-the-case/
 1. As a new student, I can sign up and choose an avatar, daily goal, exam date, and specialties, so the app feels like mine.
 2. As a student, I see my streak, level, XP progress, today's goal, and a recommended case as soon as I open the app.
 3. As a student, I can filter cases by specialty, difficulty, and station length.
-4. As a student, I get 1 minute of reading time with the candidate brief before the station starts.
+4. As a student, I get 2 minutes of reading time with the candidate brief and task list before the station starts.
 5. As a student, I can talk to a patient who answers realistically, shows emotion, and only reveals what I ask about.
 6. As a student, I see a countdown, and the station ends automatically at 5:00.
 7. As a student, I can present my findings by voice to an examiner within 3:00.
