@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import { Award, Clock, Target, icons, type LucideIcon } from "lucide-react";
+import Link from "next/link";
+import { Award, BookOpen, Clock, Target, icons, type LucideIcon } from "lucide-react";
 import { BadgeMedal, type BadgeTier } from "@/components/game/badge-medal";
 import { StreakFlame } from "@/components/game/streak-flame";
 import { XpBar } from "@/components/game/xp-bar";
@@ -11,29 +12,14 @@ import { createClient } from "@/lib/supabase/server";
 import { getProfileWithProgress } from "@/server/auth/session";
 import { patientAvailable } from "@/server/station/llm";
 import { levelProgress } from "@/server/gamification/levels";
-import { stationXp, totalXp } from "@/server/gamification/xp";
-import { StartCaseButton } from "./start-case-button";
+import { StartCaseButton } from "@/components/cases/start-case-button";
+import { PERSONA_LABEL, maxStationXp } from "@/features/case-library/labels";
 
 export const metadata: Metadata = { title: "Hub" };
-
-const PERSONA_LABEL: Record<string, string> = {
-  cooperative: "Cooperative",
-  reserved: "Reserved",
-  anxious: "Anxious",
-  angry: "Frustrated",
-  distracted: "Distracted",
-  embarrassed: "Embarrassed",
-};
 
 function iconFor(name: string): LucideIcon {
   const pascal = name.replace(/(^|-)([a-z0-9])/g, (_, __, c: string) => c.toUpperCase()) as keyof typeof icons;
   return icons[pascal] ?? Award;
-}
-
-/** Completion + a perfect score, before streak/first-of-day bonuses. */
-function maxStationXp(difficulty: number) {
-  const d = Math.min(5, Math.max(1, difficulty)) as 1 | 2 | 3 | 4 | 5;
-  return totalXp(stationXp({ difficulty: d, overallPct: 100, previousBestPct: null, isFirstStationToday: false, streak: 0 }));
 }
 
 /** YYYY-MM-DD for "now" in the student's timezone (streak days follow local time). */
@@ -51,7 +37,7 @@ export default async function HubPage() {
     profile.target_specialties.length
       ? supabase
           .from("v_case_catalog")
-          .select("slug, title, difficulty, persona, specialty_name, history_seconds, presentation_seconds")
+          .select("slug, title, difficulty, persona, specialty_name, station_seconds")
           .in("specialty_slug", profile.target_specialties)
           .order("difficulty")
           .limit(1)
@@ -59,7 +45,7 @@ export default async function HubPage() {
       : Promise.resolve({ data: null }),
     supabase
       .from("v_case_catalog")
-      .select("slug, title, difficulty, persona, specialty_name, history_seconds, presentation_seconds")
+      .select("slug, title, difficulty, persona, specialty_name, station_seconds")
       .order("difficulty")
       .limit(1)
       .maybeSingle(),
@@ -81,13 +67,20 @@ export default async function HubPage() {
 
   return (
     <div className="flex flex-col gap-5">
-      <div>
-        <h1 className="text-2xl font-black sm:text-3xl">G&apos;day, {name}! 👋</h1>
-        <p className="text-muted-foreground">
-          {progress.total_consultations === 0
-            ? "Your first patient is in the waiting room."
-            : "Ready for your next patient?"}
-        </p>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-black sm:text-3xl">G&apos;day, {name}! 👋</h1>
+          <p className="text-muted-foreground">
+            {progress.total_consultations === 0
+              ? "Your first patient is in the waiting room."
+              : "Ready for your next patient?"}
+          </p>
+        </div>
+        <Button asChild variant="outline">
+          <Link href="/cases">
+            <BookOpen /> Browse all cases
+          </Link>
+        </Button>
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">
@@ -125,7 +118,7 @@ export default async function HubPage() {
               <Badge variant="purple">Difficulty {recommended.difficulty}/5</Badge>
               {recommended.persona && <Badge variant="coral">{PERSONA_LABEL[recommended.persona] ?? recommended.persona} patient</Badge>}
               <Badge variant="outline">
-                <Clock /> {Math.round((recommended.history_seconds + recommended.presentation_seconds) / 60)} min
+                <Clock /> {Math.round(recommended.station_seconds / 60)} min
               </Badge>
             </CardContent>
             <div className="flex items-center justify-between gap-3">

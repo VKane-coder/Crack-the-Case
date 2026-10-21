@@ -55,6 +55,20 @@ describe("speech buffer", () => {
     ]);
   });
 
+  it("releases a long opening clause early, then whole sentences", () => {
+    const s = new SpeechBuffer();
+    const out = ["[emotion:embarrassed] It's been going on for about three months,", " I suppose, and", " it's getting worse, really. Then", " more."].flatMap((d) =>
+      s.push(d),
+    );
+    out.push(...s.flush());
+    expect(out).toEqual([
+      { type: "emotion", emotion: "embarrassed" },
+      { type: "sentence", text: "It's been going on for about three months," },
+      { type: "sentence", text: "I suppose, and it's getting worse, really." },
+      { type: "sentence", text: "Then more." },
+    ]);
+  });
+
   it("falls back to neutral for a missing or unknown tag", () => {
     const a = new SpeechBuffer();
     expect([...a.push("Yes, that's right."), ...a.flush()][0]).toEqual({ type: "emotion", emotion: "neutral" });

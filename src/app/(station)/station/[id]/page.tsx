@@ -4,6 +4,7 @@ import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getProfileWithProgress } from "@/server/auth/session";
 import { loadStation } from "@/server/station/orchestrator";
+import { sttAvailable, ttsAvailable } from "@/server/voice/config";
 import { StationClient } from "./station-client";
 
 export const metadata: Metadata = { title: "Station" };
@@ -18,6 +19,10 @@ export default async function StationPage({ params }: PageProps<"/station/[id]">
   const station = await loadStation(profile.id, id, await createClient());
   if (!station) notFound();
 
+  // Previews say which voice keys are missing, so a Vercel env-var mistake is visible at a glance.
+  const missing = [!sttAvailable() && "DEEPGRAM_API_KEY", !ttsAvailable() && "ELEVENLABS_API_KEY"].filter(Boolean);
+  const setupNote = process.env.VERCEL_ENV === "preview" && missing.length ? `Preview setup: ${missing.join(" and ")} not found, so voice is off.` : null;
+
   return (
     <div className="min-h-dvh bg-background">
       <header className="border-b">
@@ -29,7 +34,12 @@ export default async function StationPage({ params }: PageProps<"/station/[id]">
         </div>
       </header>
       <main className="mx-auto max-w-3xl px-4 py-5">
-        <StationClient station={station} />
+        {setupNote && <p className="mb-4 rounded-xl bg-muted p-3 text-center text-sm text-muted-foreground">{setupNote}</p>}
+        <StationClient
+          station={station}
+          voice={{ input: sttAvailable(), output: ttsAvailable() }}
+          showLatency={process.env.VERCEL_ENV !== "production"}
+        />
       </main>
     </div>
   );

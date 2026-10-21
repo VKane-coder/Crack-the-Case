@@ -14,10 +14,15 @@
     "db:test": "bash scripts/db-test.sh",
     "test:e2e": "playwright test",
     "supabase:admin": "tsx scripts/supabase-admin.ts",
-    "eval:patient": "tsx --conditions=react-server evals/patient-leak.ts"
+    "eval:patient": "tsx --conditions=react-server evals/patient-leak.ts",
+    "voices:list": "tsx scripts/list-voices.ts",
+    "eval:examiner": "tsx --conditions=react-server evals/examiner-bands.ts",
+    "cases:import": "tsx scripts/import-cases.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.135.0",
+    "@deepgram/sdk": "^5.15.0",
+    "@elevenlabs/elevenlabs-js": "^2.73.0",
     "@supabase/ssr": "^0.12.7",
     "@supabase/supabase-js": "^2.118.0",
     "canvas-confetti": "^1.9.4",

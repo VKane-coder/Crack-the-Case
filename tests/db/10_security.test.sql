@@ -10,6 +10,9 @@ insert into auth.users (id, email, raw_user_meta_data) values
   ('00000000-0000-4000-8000-00000000000c', 'admin@example.edu.au', '{}');
 
 update public.profiles set role = 'admin' where id = '00000000-0000-4000-8000-00000000000c';
+-- The seed cases are test fixtures owned by the e2e-fixtures organization; Alice is a test user in it, Bob isn't.
+update public.profiles set organization_id = (select id from public.organizations where slug = 'e2e-fixtures')
+ where id = '00000000-0000-4000-8000-00000000000a';
 
 insert into public.consultations (id, user_id, case_version_id)
 select '10000000-0000-4000-8000-00000000000a', '00000000-0000-4000-8000-00000000000a', current_version_id
@@ -79,6 +82,14 @@ begin
     raise exception 'FAIL: catalog leaks diagnosis';
   end if;
 end $$;
+
+\echo '  · student outside the fixtures organization: seed cases are hidden'
+set local request.jwt.claims = '{"sub": "00000000-0000-4000-8000-00000000000b", "role": "authenticated"}';
+do $$
+begin
+  if exists (select 1 from public.v_case_catalog) then raise exception 'FAIL: fixture cases visible outside their organization'; end if;
+end $$;
+set local request.jwt.claims = '{"sub": "00000000-0000-4000-8000-00000000000a", "role": "authenticated"}';
 
 \echo '  · student: cannot read case bodies or rubrics'
 do $$
@@ -210,8 +221,10 @@ declare c public.consultations;
 begin
   c := public.transition_consultation('10000000-0000-4000-8000-00000000000a', 'created', 'briefing');
   c := public.transition_consultation(c.id, 'briefing', 'history');
-  if c.phase_deadline_at is null or c.phase_deadline_at - c.history_started_at <> interval '300 seconds' then
-    raise exception 'FAIL: history deadline %', c.phase_deadline_at - c.history_started_at;
+  -- One 8-minute station clock starts with the patient...
+  if c.station_deadline_at is null or c.station_deadline_at - c.history_started_at <> interval '480 seconds'
+     or c.phase_deadline_at is distinct from c.station_deadline_at then
+    raise exception 'FAIL: station deadline %', c.station_deadline_at - c.history_started_at;
   end if;
   begin
     perform public.transition_consultation(c.id, 'briefing', 'history');
@@ -223,6 +236,12 @@ begin
     raise exception 'FAIL: illegal transition succeeded';
   exception when invalid_parameter_value then null;
   end;
+  -- ...and carries on, unchanged, through the examiner stages.
+  c := public.transition_consultation(c.id, 'history', 'history_ended');
+  c := public.transition_consultation(c.id, 'history_ended', 'presentation');
+  if c.phase_deadline_at is distinct from c.station_deadline_at then
+    raise exception 'FAIL: presentation reset the station clock';
+  end if;
 end $$;
 
 \echo '  · one live station per student'
@@ -232,6 +251,14 @@ begin
   select '00000000-0000-4000-8000-00000000000a', current_version_id from public.cases where slug = 'ed-thunderclap-headache';
   raise exception 'FAIL: second live station allowed';
 exception when unique_violation then null;
+end $$;
+
+\echo '  · station clock ran out: straight to marking'
+do $$
+declare c public.consultations;
+begin
+  c := public.transition_consultation('10000000-0000-4000-8000-00000000000a', 'presentation', 'assessing');
+  if c.phase_deadline_at is not null then raise exception 'FAIL: assessing kept a deadline'; end if;
 end $$;
 
 \echo '  · published content is immutable'

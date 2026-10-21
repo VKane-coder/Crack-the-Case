@@ -26,7 +26,10 @@ export function patientScript(view: PatientView): string {
   lines.push(``, `Why you're here, in your own words:`);
   for (const [k, v] of Object.entries(view.presenting_complaint)) lines.push(`- ${k}: ${v}`);
   lines.push(``, `Facts about you (id, area, disclosure rule: what you would say):`);
-  for (const f of view.facts) lines.push(`- ${f.id} [${f.category}, ${f.disclosure}]: ${f.content}`);
+  for (const f of view.facts) {
+    const cue = f.prompt ? ` (when asked something like "${f.prompt}")` : "";
+    lines.push(`- ${f.id} [${f.category}, ${f.disclosure}]${cue}: ${f.content}`);
+  }
   lines.push(
     ``,
     `Your own ideas, concerns and expectations:`,

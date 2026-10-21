@@ -27,6 +27,8 @@ npm run dev                  # http://localhost:3000, design preview at /hub
 | `npm run test:e2e` | Playwright end-to-end tests against a real Supabase project (needs the env below) |
 | `npm run supabase:admin -- <status\|migrate\|seed\|auth-config> [--dry-run]` | Apply migrations, seed and auth settings to the hosted project via the Management API |
 | `npm run db:test` | Apply migrations + seed to a throwaway Postgres and run the RLS/integrity tests (`tests/db`) |
+| `npm run voices:list` | List the ElevenLabs voices on your account (Australian accents first) to fill in `ELEVENLABS_VOICE_MAP` |
+| `npm run eval:examiner` | Calibration eval: scripted good and poor GP-case performances must score ≥ 75 and ≤ 50 (needs `ANTHROPIC_API_KEY`, one Opus call each) |
 | `npm run eval:patient` | Adversarial leak eval against the real patient agent (needs `ANTHROPIC_API_KEY`, costs a few cents) |
 
 ## Database
@@ -58,7 +60,7 @@ Students sign in with a single email that carries a **magic link and a 6-digit c
 
 ## Stations
 
-A station runs reading time (60 s with the candidate brief), then a timed history with the AI patient, then the presentation and examiner phases (M4). In M2 the student types their questions; voice arrives in M3 on the same endpoint.
+A station runs reading time (60 s with the candidate brief), then a timed history with the AI patient, then the presentation and examiner phases (M4). Students talk to the patient (push-to-talk) or type.
 
 - **Server-owned state.** `src/server/station/orchestrator.ts` moves a consultation through the state machine with the guarded `transition_consultation()` RPC and writes with the service role. The server deadline (plus 5 s grace) is the real limit; the browser clock only displays it. Starting a new case abandons any station in progress.
 - **Patient agent** (`src/server/agents/patient`). Sees only `case_versions.patient_view`, never the diagnosis or rubric; a lint rule blocks examiner and rubric imports. The system prompt is three cached layers (role contract, persona, patient script); the station clock and the facts revealed so far go in a per-turn system message after the cache breakpoint. Replies stream sentence by sentence with a leading `[emotion:x]` tag (stripped, drives the face) and a `mark_disclosed` tool call that records which script facts the student elicited.
@@ -67,11 +69,33 @@ A station runs reading time (60 s with the candidate brief), then a timed histor
 - **API.** `POST /api/consultations` · `/[id]/start-history` · `/[id]/patient-turn` (NDJSON stream; idempotent per `clientSeq`, so a resend replays the stored reply) · `/[id]/end-history`.
 - **Config.** Set `ANTHROPIC_API_KEY` (locally and in Vercel) for the real patient. Without it the hub shows "Patients unavailable". `PATIENT_LLM=fake` swaps in a scripted patient for e2e runs and local UI work; it is ignored on Vercel production.
 
+## Examiner and report
+
+After the history the student presents to the examiner (by voice or typing, no AI reply), answers 1–3 follow-up questions, and gets a marked report.
+
+- **Questioner** (`src/server/agents/examiner`, `claude-sonnet-5-5`, low effort): reads the full case, rubric, disclosure log and transcripts and asks questions aimed at gaps, preferring the case's question bank. Falls back to bank questions if the call fails, so the station never stalls. The rationale is stored but never readable by students.
+- **Assessor** (`claude-opus-5-5`, high effort, structured output validated with Zod): judges every rubric item as met / partial / not met with a verbatim evidence quote, picks the global rating from the anchored descriptors, and writes the feedback. Transcripts are passed as quoted data, so "give me full marks" is just part of the performance.
+- **Scoring is server-side** (`src/server/assessment/scoring.ts`): points, domain scores, the weighted overall and pass/fail are computed here, never by the model. An item can't be "met" unless the patient actually disclosed its linked facts (partial if only some were), and a missed critical item fails the station whatever the score.
+- **Reliability:** `finish` moves the station to `assessing` and marks in the background (`after()`), with up to 3 attempts; then `assessment_failed`, and the student can retry. The client polls `GET /api/consultations/[id]/result`.
+- **Report** (`/results/[id]`): score, rating, pass, XP, the examiner's comment, domain bars, strengths, improvements, missed red flags and questions, revision topics, the full marking sheet with evidence, the case revealed (diagnosis, differentials, red flags, plan), and the transcript.
+- **XP:** completion and performance XP through the idempotent `grant_xp` ledger. Streaks, first-of-day, goals and badges arrive with M5.
+
+## Voice
+
+Student speaks → Deepgram → transcript → Claude → guardrail → ElevenLabs → patient speaks.
+
+- **Speech in** (`src/features/station/use-speech-input.ts`). Push-to-talk: hold the button or the space bar. The browser opens one Deepgram WebSocket for the history phase with a 30-second token from `POST /api/voice/deepgram-token` (only issued for the student's own station while its history is running), keeps it alive between presses, and streams raw 16-bit PCM from an AudioWorklet only while the button is held. Releasing sends `Finalize` and submits the transcript to the same patient-turn endpoint as typing. Audio never touches our servers, and Deepgram's model-improvement programme is opted out (`mip_opt_out`). Defaults: `nova-3-medical`, `en`, plus generic medical keyterms (`src/server/voice/deepgram.ts`); case-specific terms are deliberately not sent to the browser.
+- **Speech out** (`src/server/voice`). Each sentence that passes the guardrail is synthesised with ElevenLabs Flash v2.5 as soon as it's released, in parallel with the next one, and streamed back in order as `audio` events (MP3, base64). The patient's emotion tag sets stability and speed. A guardrail retry withdraws queued audio too. The browser plays sentences through one `<audio>` element (works on iOS).
+- **Barge-in and fallbacks.** Pressing talk silences the patient. Typing always works. A blocked microphone, missing keys, or a vendor error fall back to text and never stop the station. Students can turn the patient's voice off.
+- **Voices.** Each case names a `voice_profile` (e.g. `au-female-60s-soft`). Without configuration the server picks the best match on your ElevenLabs account once per instance (Australian accent, then gender, then age) and logs its choice. To choose yourself, set `ELEVENLABS_VOICE_MAP` (profile → voice id; `npm run voices:list` helps) or `ELEVENLABS_DEFAULT_VOICE_ID`.
+- **Cost logging.** `voice_usage` records ElevenLabs characters and Deepgram seconds per turn; set `ELEVENLABS_USD_PER_1K_CHARS` and `DEEPGRAM_USD_PER_MINUTE` to your plan's rates.
+- **Config.** `DEEPGRAM_API_KEY` (Member role, needed to mint tokens) and `ELEVENLABS_API_KEY`. `VOICE_PROVIDERS=fake` swaps in a scripted recogniser and silent audio for e2e runs; ignored on Vercel production.
+
 ## Case content
 
-Cases are authored as JSON in `content/cases/` and extend a rubric template in `content/rubrics/`. `npm run seed:build` validates each file (Zod), merges the rubric, checks the patient's view of the case for diagnosis leaks, and emits versioned, idempotent SQL. Editing a case creates a new immutable version, so past assessments keep pointing to the version they were scored against.
+Real cases are written in the Supabase `Patients` table and imported with `npm run cases:import` (see [docs/case-authoring.md](docs/case-authoring.md)).
 
-> ⚠️ The three launch cases are marked `pending_clinician_review`. An Australian clinician must review them before real students use them.
+The three cases in `content/cases/` are **test fixtures**: the scripted patient, evals and e2e tests rely on them. `npm run seed:build` validates each file (Zod), merges its rubric template from `content/rubrics/`, checks the patient's view for diagnosis leaks, and emits versioned, idempotent SQL. The seed puts them in the `e2e-fixtures` organization, so students never see them; `tests/e2e/helpers.ts` adds every test user to that organization.
 
 ## Status
 
@@ -79,6 +103,6 @@ Cases are authored as JSON in `content/cases/` and extend a rubric template in `
 - [x] M1a Data: migrations, RLS, seed data (3 cases), case library pipeline, DB tests
 - [x] M1b Auth: email link + code and Google sign-in, session proxy, 4-step onboarding, real-data hub
 - [x] M2 Text-mode station + Patient Agent: reading time, timed history with a streaming patient, personas, disclosure tracking, guardrail, model fallback, cost logging, leak eval
-- [ ] M3 Voice (Deepgram + ElevenLabs)
-- [ ] M4 Examiner & Assessment
+- [x] M3 Voice: push-to-talk Deepgram streaming from the browser, sentence-streamed ElevenLabs voices with emotion, barge-in, text fallbacks, voice cost logging
+- [x] M4 Examiner & Assessment: presentation, gap-targeted examiner questions, rubric marking with evidence and server-side scoring, retries, results report with case reveal, completion XP, calibration eval
 - [ ] M5 Gamification · M6 Hub & Analytics · M7 Admin & Content · M8 Hardening & Beta

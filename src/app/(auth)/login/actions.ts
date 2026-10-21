@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { publicEnv } from "@/lib/env";
+import { authSiteUrl } from "@/lib/site-url";
 import { safeNext } from "@/lib/safe-next";
 import { createClient } from "@/lib/supabase/server";
 
@@ -16,15 +16,21 @@ function friendlyAuthError(error: { status?: number; code?: string; message: str
     return "Whoa, that's a lot of emails! Give it a minute, then try again.";
   }
   if (error.code === "otp_expired") return "That code has expired. Ask for a fresh one and try again.";
+  if (error.code === "email_address_not_authorized") {
+    // Supabase's built-in mailer only reaches project team members until custom SMTP is set up.
+    return "We can't send sign-in emails to that address yet. Ask the Crack the Case team to set up email.";
+  }
+  if (error.code === "email_address_invalid") return "That email address can't receive mail. Check it and try again.";
   if (error.code === "otp_disabled" || error.code === "signup_disabled") return "Sign-ups are paused right now. Please try later.";
-  return "Something went wrong on our side. Please try again.";
+  // Show the code so a failure can be diagnosed from a screenshot; it reveals nothing sensitive.
+  return `Something went wrong on our side. Please try again. (${error.code ?? `error ${error.status ?? "unknown"}`})`;
 }
 
 export async function sendEmailLink(input: { email: string; next?: string }): Promise<AuthActionResult> {
   const email = emailSchema.safeParse(input.email.trim().toLowerCase());
   if (!email.success) return { ok: false, error: "That email doesn't look quite right." };
 
-  const redirectTo = new URL("/auth/confirm", publicEnv().NEXT_PUBLIC_SITE_URL);
+  const redirectTo = new URL("/auth/confirm", authSiteUrl());
   redirectTo.searchParams.set("next", safeNext(input.next));
 
   const supabase = await createClient();

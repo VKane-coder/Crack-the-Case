@@ -16,20 +16,43 @@ export function faceFor(emotion: string | null | undefined) {
   return FACE[emotion ?? "neutral"] ?? FACE.neutral;
 }
 
-/** Placeholder patient avatar until M3's animated stage: a face that follows the patient's emotion. */
-export function PatientStage({ name, age, emotion, speaking }: { name: string; age: number; emotion: string; speaking: boolean }) {
+/**
+ * The patient: their picture when the case has one (with a small face showing how they feel),
+ * otherwise a face that follows the patient's emotion.
+ */
+export function PatientStage({
+  name,
+  age,
+  emotion,
+  speaking,
+  avatarUrl,
+}: {
+  name: string;
+  age: number;
+  emotion: string;
+  speaking: boolean;
+  avatarUrl?: string | null;
+}) {
   const face = faceFor(emotion);
   return (
     <div className="flex items-center gap-3">
       <div
         className={cn(
-          "grid size-16 place-items-center rounded-full bg-muted text-4xl transition-shadow motion-reduce:transition-none",
+          "relative grid size-16 place-items-center rounded-full bg-muted text-4xl transition-shadow motion-reduce:transition-none",
           speaking && "ring-4 ring-brand-teal/40 motion-safe:animate-pulse",
         )}
         role="img"
         aria-label={`${name} looks ${face.label}`}
       >
-        {face.emoji}
+        {avatarUrl ? (
+          <>
+            {/* eslint-disable-next-line @next/next/no-img-element -- signed storage URLs, not optimisable */}
+            <img src={avatarUrl} alt="" className="size-16 rounded-full object-cover" />
+            <span className="absolute -right-1 -bottom-1 grid size-7 place-items-center rounded-full bg-card text-lg shadow">{face.emoji}</span>
+          </>
+        ) : (
+          face.emoji
+        )}
       </div>
       <div>
         <div className="font-extrabold">{name}</div>

@@ -3,6 +3,8 @@
 export const MODELS = {
   patient: "claude-sonnet-5-5",
   patientFallback: "claude-haiku-5-5",
+  questioner: "claude-sonnet-5-5",
+  assessor: "claude-opus-5-5",
 } as const;
 
 type Price = { input: number; output: number; cacheRead: number; cacheWrite: number };

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Stethoscope } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-export function StartCaseButton({ caseSlug }: { caseSlug: string }) {
+export function StartCaseButton({ caseSlug, label = "Start case" }: { caseSlug: string; label?: string }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -27,7 +27,7 @@ export function StartCaseButton({ caseSlug }: { caseSlug: string }) {
   return (
     <div className="flex flex-col items-end gap-1">
       <Button variant="reward" size="lg" onClick={start} disabled={busy}>
-        <Stethoscope /> {busy ? "Calling them in…" : "Start case"}
+        <Stethoscope /> {busy ? "Calling them in…" : label}
       </Button>
       {error && (
         <p role="alert" className="text-sm font-semibold text-destructive">
