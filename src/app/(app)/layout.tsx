@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Flame, Sparkles } from "lucide-react";
+import { BookOpen, Flame, Sparkles } from "lucide-react";
 import { UserMenu } from "@/components/layout/user-menu";
 import { cn } from "@/lib/utils";
 import { getProfileWithProgress } from "@/server/auth/session";
@@ -17,6 +17,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             Crack the <span className="text-brand-purple">Case</span>
           </Link>
           <div className="flex items-center gap-2 sm:gap-3">
+            <Link
+              href="/cases"
+              className="flex items-center gap-1 rounded-full px-2.5 py-1 text-sm font-bold text-muted-foreground hover:bg-muted hover:text-foreground"
+            >
+              <BookOpen className="size-4" /> <span className="max-sm:sr-only">Cases</span>
+            </Link>
             <span
               className={cn(
                 "flex items-center gap-1 rounded-full px-2.5 py-1 text-sm font-black tabular-nums",
