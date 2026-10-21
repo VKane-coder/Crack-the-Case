@@ -23,6 +23,10 @@ function uuid(name: string): string {
   return `${x.slice(0, 8)}-${x.slice(8, 12)}-${x.slice(12, 16)}-${x.slice(16, 20)}-${x.slice(20)}`;
 }
 
+// Organization that owns the content/ test fixture cases (tests/e2e/helpers.ts puts test users in it).
+const FIXTURES_ORG_SLUG = "e2e-fixtures";
+const FIXTURES_ORG_ID = uuid(`organization:${FIXTURES_ORG_SLUG}`);
+
 const lit = (s: string) => `'${s.replace(/'/g, "''")}'`;
 const json = (v: unknown) => `${lit(JSON.stringify(v))}::jsonb`;
 const textArray = (a: string[]) => (a.length ? `array[${a.map(lit).join(", ")}]::text[]` : "'{}'::text[]");
@@ -77,11 +81,11 @@ on conflict (rubric_version_id, key) do nothing;
 
 update public.rubrics set current_version_id = ${lit(rubricVersionId)} where id = ${lit(rubricId)};
 
-insert into public.cases (id, slug, title, specialty_id, difficulty, tags)
+insert into public.cases (id, slug, title, specialty_id, difficulty, tags, organization_id)
 values (${lit(caseId)}, ${lit(slug)}, ${lit(c.content.meta.title)},
         (select id from public.specialties where slug = ${lit(c.content.meta.specialty)}),
-        ${c.content.meta.difficulty}, ${textArray(c.content.meta.tags)})
-on conflict (slug) do update set specialty_id = excluded.specialty_id, tags = excluded.tags;
+        ${c.content.meta.difficulty}, ${textArray(c.content.meta.tags)}, ${lit(FIXTURES_ORG_ID)})
+on conflict (slug) do update set specialty_id = excluded.specialty_id, tags = excluded.tags, organization_id = excluded.organization_id;
 
 insert into public.case_versions (id, case_id, version, content, patient_view, rubric_version_id, content_hash)
 select ${lit(caseVersionId)}, ${lit(caseId)},
@@ -94,12 +98,14 @@ do $$ begin perform public.publish_case_version(${lit(caseVersionId)}); end $$;
 }
 
 function casesSql(cases: CompiledCase[]): string {
-  const pending = cases.filter((c) => c.content.meta.review_status !== "clinician_reviewed").map((c) => c.content.meta.slug);
-  const note = pending.length
-    ? `-- NOTE: not yet clinician-reviewed (publish to students only after review): ${pending.join(", ")}\n`
-    : "";
-  return `${HEADER}${note}
+  return `${HEADER}-- The content/ cases are test fixtures (the scripted patient and e2e tests rely on them). They belong to the
+-- ${FIXTURES_ORG_SLUG} organization, so only test users see them; real cases come from the Patients table.
+
 begin;
+
+insert into public.organizations (id, name, slug)
+values (${lit(FIXTURES_ORG_ID)}, 'Test fixtures (e2e)', ${lit(FIXTURES_ORG_SLUG)})
+on conflict (slug) do nothing;
 ${cases.map(caseSql).join("")}
 commit;
 `;

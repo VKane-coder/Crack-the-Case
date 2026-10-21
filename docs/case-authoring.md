@@ -41,6 +41,10 @@ Any grouping works, as long as each piece of information is a question/answer pa
 - `task_1` (or no task wrapper) is the patient stage. Each section with `marks` (or `mark_allocation`) becomes one
   marked item. Put the questions you expect inside it, and any level descriptors in `marking_scheme` or
   `marking_criteria` (e.g. `"2_marks": "Asked about X and Y"`). Sections with 0 marks aren't marked.
+  The patient only knows what's in `patient.profile`: question/answer pairs inside the rubric are a guide for
+  you, not the patient's script, so put every answer the patient should give in `patient.profile` too.
+- Keep one question per task (`task_2`, `task_3`, …) when the order matters. Within a task, the database stores
+  sections sorted by the length of their names, so `management` would come before `top_differentials`.
 - `task_2`, `task_3`, … are the **examiner stage**. Each section with marks becomes one question the examiner asks
   after the student presents, in order:
 

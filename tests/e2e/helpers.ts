@@ -16,6 +16,10 @@ export async function createTestUser() {
   const { data: user, error } = await supabase.auth.admin.createUser({ email, email_confirm: true });
   if (error) throw error;
   created.push(user.user.id);
+  // The seed cases are test fixtures that only members of the e2e-fixtures organization can see.
+  const { data: org } = await supabase.from("organizations").select("id").eq("slug", "e2e-fixtures").single();
+  const { error: orgError } = await supabase.from("profiles").update({ organization_id: org!.id }).eq("id", user.user.id);
+  if (orgError) throw orgError;
   const { data: link, error: linkError } = await supabase.auth.admin.generateLink({ type: "magiclink", email });
   if (linkError) throw linkError;
   return { id: user.user.id, email, tokenHash: link.properties.hashed_token, otp: link.properties.email_otp };

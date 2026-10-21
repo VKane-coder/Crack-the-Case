@@ -10,6 +10,9 @@ insert into auth.users (id, email, raw_user_meta_data) values
   ('00000000-0000-4000-8000-00000000000c', 'admin@example.edu.au', '{}');
 
 update public.profiles set role = 'admin' where id = '00000000-0000-4000-8000-00000000000c';
+-- The seed cases are test fixtures owned by the e2e-fixtures organization; Alice is a test user in it, Bob isn't.
+update public.profiles set organization_id = (select id from public.organizations where slug = 'e2e-fixtures')
+ where id = '00000000-0000-4000-8000-00000000000a';
 
 insert into public.consultations (id, user_id, case_version_id)
 select '10000000-0000-4000-8000-00000000000a', '00000000-0000-4000-8000-00000000000a', current_version_id
@@ -79,6 +82,14 @@ begin
     raise exception 'FAIL: catalog leaks diagnosis';
   end if;
 end $$;
+
+\echo '  · student outside the fixtures organization: seed cases are hidden'
+set local request.jwt.claims = '{"sub": "00000000-0000-4000-8000-00000000000b", "role": "authenticated"}';
+do $$
+begin
+  if exists (select 1 from public.v_case_catalog) then raise exception 'FAIL: fixture cases visible outside their organization'; end if;
+end $$;
+set local request.jwt.claims = '{"sub": "00000000-0000-4000-8000-00000000000a", "role": "authenticated"}';
 
 \echo '  · student: cannot read case bodies or rubrics'
 do $$

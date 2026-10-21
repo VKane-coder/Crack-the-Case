@@ -93,9 +93,9 @@ Student speaks → Deepgram → transcript → Claude → guardrail → ElevenLa
 
 ## Case content
 
-Cases are authored as JSON in `content/cases/` and extend a rubric template in `content/rubrics/`. `npm run seed:build` validates each file (Zod), merges the rubric, checks the patient's view of the case for diagnosis leaks, and emits versioned, idempotent SQL. Editing a case creates a new immutable version, so past assessments keep pointing to the version they were scored against.
+Real cases are written in the Supabase `Patients` table and imported with `npm run cases:import` (see [docs/case-authoring.md](docs/case-authoring.md)).
 
-> ⚠️ The three launch cases are marked `pending_clinician_review`. An Australian clinician must review them before real students use them.
+The three cases in `content/cases/` are **test fixtures**: the scripted patient, evals and e2e tests rely on them. `npm run seed:build` validates each file (Zod), merges its rubric template from `content/rubrics/`, checks the patient's view for diagnosis leaks, and emits versioned, idempotent SQL. The seed puts them in the `e2e-fixtures` organization, so students never see them; `tests/e2e/helpers.ts` adds every test user to that organization.
 
 ## Status
 
