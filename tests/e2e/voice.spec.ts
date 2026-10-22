@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { admin, createOnboardedUser, deleteTestUsers } from "./helpers";
+import { admin, createOnboardedUser, deleteTestUsers, startCase } from "./helpers";
 
 // Runs with VOICE_PROVIDERS=fake: the "speech recogniser" returns window.__fakeSttTranscript and the
 // "voice" is silent WAV, so this covers the push-to-talk flow and the audio stream, not the vendors.
@@ -41,10 +41,12 @@ async function say(page: Page, text: string, how: "button" | "space") {
 }
 
 test("push-to-talk sends speech to the patient and the reply comes back with audio", async ({ page }) => {
+  // A station start and three spoken turns against the hosted project: usually 35–50 s.
+  test.setTimeout(120_000);
   const user = await createOnboardedUser();
   await page.addInitScript(teeTurns);
   await page.goto(`/auth/confirm?token_hash=${user.tokenHash}&type=email&next=/hub`);
-  await page.getByRole("button", { name: "Start case" }).click();
+  const id = await startCase(page);
   await expect(page.getByText("Hold the talk button")).toBeVisible();
   await page.getByRole("button", { name: /I'm ready/ }).click();
   const log = page.getByRole("log", { name: "Consultation" });
@@ -68,7 +70,6 @@ test("push-to-talk sends speech to the patient and the reply comes back with aud
   expect(third).not.toContain('"type":"audio"');
 
   // Voice tokens are issued while the student speaks (patient and examiner stages), never after.
-  const id = page.url().split("/").pop()!;
   await page.getByRole("button", { name: "Move to the examiner" }).click();
   await expect(page.getByRole("log", { name: "Presentation so far" })).toBeVisible();
   const presenting = await page.request.post("/api/voice/deepgram-token", { data: { consultationId: id } });
