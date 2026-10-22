@@ -71,9 +71,7 @@ export default async function HubPage() {
         <div>
           <h1 className="text-2xl font-black sm:text-3xl">G&apos;day, {name}! 👋</h1>
           <p className="text-muted-foreground">
-            {progress.total_consultations === 0
-              ? "Your first patient is in the waiting room."
-              : "Ready for your next patient?"}
+            {progress.total_consultations === 0 ? "Your first patient is in the waiting room." : "Ready for your next patient?"}
           </p>
         </div>
         <Button asChild variant="outline">
@@ -86,7 +84,7 @@ export default async function HubPage() {
       <div className="grid gap-4 md:grid-cols-3">
         <Card>
           <StreakFlame days={progress.current_streak} activeToday={activeToday} />
-          <p className="text-sm text-muted-foreground">
+          <p className="text-muted-foreground text-sm">
             {activeToday
               ? "Streak safe for today. Legend!"
               : progress.current_streak > 0
@@ -101,9 +99,9 @@ export default async function HubPage() {
 
       <div className="grid gap-4 md:grid-cols-3">
         {recommended && (
-          <Card className="overflow-hidden border-brand-purple/30 bg-gradient-to-br from-card to-brand-purple/5 md:col-span-2">
+          <Card className="border-brand-purple/30 from-card to-brand-purple/5 overflow-hidden bg-gradient-to-br md:col-span-2">
             <CardHeader>
-              <span className="flex items-center gap-1.5 text-xs font-extrabold tracking-wide text-brand-purple uppercase">
+              <span className="text-brand-purple flex items-center gap-1.5 text-xs font-extrabold tracking-wide uppercase">
                 <Target className="size-3.5" /> Recommended next challenge
               </span>
               <CardTitle className="text-xl">{recommended.title}</CardTitle>
@@ -122,7 +120,7 @@ export default async function HubPage() {
               </Badge>
             </CardContent>
             <div className="flex items-center justify-between gap-3">
-              <span className="text-sm font-bold text-xp">Up to +{maxStationXp(recommended.difficulty)} XP</span>
+              <span className="text-xp text-sm font-bold">Up to +{maxStationXp(recommended.difficulty)} XP</span>
               {patientAvailable() ? (
                 <StartCaseButton caseSlug={recommended.slug} />
               ) : (
@@ -142,7 +140,7 @@ export default async function HubPage() {
             </CardDescription>
           </CardHeader>
           <Progress value={goalPct} indicatorClassName="bg-brand-teal" aria-label="Daily goal progress" />
-          <p className="text-sm text-muted-foreground">
+          <p className="text-muted-foreground text-sm">
             {goalPct >= 100 ? "Goal smashed! Bonus XP banked. 🎯" : "Smash it for +30 bonus XP."}
           </p>
         </Card>
@@ -160,13 +158,7 @@ export default async function HubPage() {
         </CardHeader>
         <div className="flex flex-wrap gap-3">
           {shelf.map((b) => (
-            <BadgeMedal
-              key={b.id}
-              name={b.name}
-              tier={b.tier as BadgeTier}
-              icon={iconFor(b.icon)}
-              locked={!earnedIds.has(b.id)}
-            />
+            <BadgeMedal key={b.id} name={b.name} tier={b.tier as BadgeTier} icon={iconFor(b.icon)} locked={!earnedIds.has(b.id)} />
           ))}
         </div>
       </Card>

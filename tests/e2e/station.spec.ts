@@ -47,7 +47,11 @@ test("hub → reading time → history with the patient → examiner, on one sta
   await page.getByRole("button", { name: "Move to the examiner" }).click();
   await expect(page.getByRole("log", { name: "Presentation so far" })).toBeVisible();
   // The examiner stage runs on the same clock: moving on doesn't reset it.
-  const { data: presenting } = await db.from("consultations").select("status, phase_deadline_at, station_deadline_at").eq("id", id).single();
+  const { data: presenting } = await db
+    .from("consultations")
+    .select("status, phase_deadline_at, station_deadline_at")
+    .eq("id", id)
+    .single();
   expect(presenting!.status).toBe("presentation");
   expect(presenting!.station_deadline_at).toBe(clock!.station_deadline_at);
   expect(Date.parse(presenting!.phase_deadline_at!)).toBe(Date.parse(clock!.station_deadline_at!));

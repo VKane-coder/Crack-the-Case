@@ -74,17 +74,17 @@ export function elevenLabsSynthesize(voiceId: string): Synthesize {
   return async (text, { emotion, previousText }, signal) => {
     const stream = await elevenlabs()
       .textToSpeech.stream(
-      voiceId,
-      {
-        text,
-        modelId: TTS_MODEL,
-        outputFormat: OUTPUT_FORMAT,
-        languageCode: "en",
-        previousText: previousText || undefined,
-        voiceSettings: { ...voiceSettingsFor(emotion), style: 0, useSpeakerBoost: false },
-      },
-      { abortSignal: signal, maxRetries: 0, timeoutInSeconds: 15 },
-    )
+        voiceId,
+        {
+          text,
+          modelId: TTS_MODEL,
+          outputFormat: OUTPUT_FORMAT,
+          languageCode: "en",
+          previousText: previousText || undefined,
+          voiceSettings: { ...voiceSettingsFor(emotion), style: 0, useSpeakerBoost: false },
+        },
+        { abortSignal: signal, maxRetries: 0, timeoutInSeconds: 15 },
+      )
       .catch((err) => {
         throw tagged(err);
       });

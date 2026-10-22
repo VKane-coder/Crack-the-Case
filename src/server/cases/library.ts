@@ -74,8 +74,7 @@ export function loadCaseLibrary(contentDir: string): CompiledCase[] {
     }
     const keys = new Set(items.map((i) => i.key));
     for (const q of rubric.examiner_question_bank)
-      for (const t of q.targets)
-        if (!keys.has(t)) throw new Error(`${where}: examiner question targets unknown item "${t}"`);
+      for (const t of q.targets) if (!keys.has(t)) throw new Error(`${where}: examiner question targets unknown item "${t}"`);
 
     const patientView = toPatientView(content);
     const leaks = findLeaks(patientView, leakTerms(content));

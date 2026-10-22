@@ -1,19 +1,12 @@
 "use server";
 
-import {
-  isValidTimeZone,
-  stepSchemas,
-  type OnboardingStep,
-  type StepData,
-} from "@/features/onboarding/schema";
+import { isValidTimeZone, stepSchemas, type OnboardingStep, type StepData } from "@/features/onboarding/schema";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { requireUser } from "@/server/auth/session";
 
 export type StepResult = { ok: true } | { ok: false; error: string };
-export type CompleteResult =
-  | { ok: true; xpAwarded: number; totalXp: number; level: number }
-  | { ok: false; error: string };
+export type CompleteResult = { ok: true; xpAwarded: number; totalXp: number; level: number } | { ok: false; error: string };
 
 // "use server" modules may only export async functions.
 const ONBOARDING_XP = 50;

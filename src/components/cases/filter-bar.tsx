@@ -36,7 +36,7 @@ export function FilterBar({ filters, specialties }: { filters: CaseFilters; spec
       }}
     >
       <div className="relative sm:col-span-2 lg:col-span-1">
-        <Search className="pointer-events-none absolute top-1/2 left-4 size-4 -translate-y-1/2 text-muted-foreground" />
+        <Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-4 size-4 -translate-y-1/2" />
         <Input
           type="search"
           value={q}

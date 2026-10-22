@@ -63,7 +63,10 @@ test("history → presentation → examiner questions → report", async ({ page
   const { data: assessment } = await db.from("assessments").select("id, status, overall_score, passed").eq("consultation_id", id).single();
   expect(assessment!.status).toBe("complete");
   expect(Number(assessment!.overall_score)).toBeGreaterThan(0);
-  const { count: items } = await db.from("assessment_item_scores").select("*", { count: "exact", head: true }).eq("assessment_id", assessment!.id);
+  const { count: items } = await db
+    .from("assessment_item_scores")
+    .select("*", { count: "exact", head: true })
+    .eq("assessment_id", assessment!.id);
   expect(items).toBeGreaterThan(10);
   const { data: qs } = await db.from("examiner_questions").select("answer_transcript").eq("consultation_id", id).order("ord");
   expect(qs!.map((q) => Boolean(q.answer_transcript))).toEqual([true, true]);
