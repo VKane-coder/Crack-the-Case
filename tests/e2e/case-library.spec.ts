@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { admin, createOnboardedUser, deleteTestUsers } from "./helpers";
+import { admin, createOnboardedUser, deleteTestUsers, startCase } from "./helpers";
 
 // Per test, not per file: the user list in helpers.ts is shared by every spec in the worker.
 test.afterEach(deleteTestUsers);
@@ -75,8 +75,7 @@ test("browse, filter and search the case library, then start a case from it", as
   // The filters survive a reload, and a case starts straight from its card.
   await page.goto("/cases?specialty=general-practice&difficulty=2");
   await expect(page.getByLabel("Specialty")).toHaveValue("general-practice");
-  await card(page, GP_CASE).getByRole("button", { name: "Try again" }).click();
-  await expect(page).toHaveURL(/\/station\/[0-9a-f-]{36}$/);
+  await startCase(page, card(page, GP_CASE).getByRole("button", { name: "Try again" }));
 });
 
 test("GET /api/cases filters for signed-in students and refuses everyone else", async ({ page, request }) => {

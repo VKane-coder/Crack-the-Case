@@ -1,17 +1,17 @@
 import { expect, test } from "@playwright/test";
-import { admin, createOnboardedUser, deleteTestUsers } from "./helpers";
+import { admin, createOnboardedUser, deleteTestUsers, startCase } from "./helpers";
 
 // Per test, not per file: the user list in helpers.ts is shared by every spec in the worker.
 test.afterEach(deleteTestUsers);
 
 test("hub → reading time → history with the patient → examiner, on one station clock", async ({ page }) => {
+  // Two station starts and a dozen station requests against the hosted project: usually 40–60 s.
+  test.setTimeout(120_000);
   const user = await createOnboardedUser();
   await page.goto(`/auth/confirm?token_hash=${user.tokenHash}&type=email&next=/hub`);
   await expect(page).toHaveURL(/\/hub$/);
 
-  await page.getByRole("button", { name: "Start case" }).click();
-  await expect(page).toHaveURL(/\/station\/[0-9a-f-]{36}$/);
-  const id = page.url().split("/").pop()!;
+  const id = await startCase(page);
   await expect(page.getByRole("heading", { name: "Your candidate brief" })).toBeVisible();
   await expect(page.getByText("Margaret Kelly, 64")).toBeVisible();
   await expect(page.getByRole("timer", { name: /Reading/ })).toBeVisible();
@@ -60,8 +60,7 @@ test("hub → reading time → history with the patient → examiner, on one sta
 
   // Starting another case abandons this one (one live station per student).
   await page.goto("/hub");
-  await page.getByRole("button", { name: "Start case" }).click();
-  await expect(page).toHaveURL(/\/station\//);
+  await startCase(page);
   const { data: old } = await db.from("consultations").select("status").eq("id", id).single();
   expect(old!.status).toBe("abandoned");
 });
@@ -76,10 +75,9 @@ test("station API refuses signed-out and cross-site requests", async ({ request 
 test("when the station clock runs out, the station goes straight to marking", async ({ page }) => {
   const user = await createOnboardedUser();
   await page.goto(`/auth/confirm?token_hash=${user.tokenHash}&type=email&next=/hub`);
-  await page.getByRole("button", { name: "Start case" }).click();
+  const id = await startCase(page);
   await page.getByRole("button", { name: /I'm ready/ }).click();
   await expect(page.getByRole("log", { name: "Consultation" })).toContainText("it's probably nothing really");
-  const id = page.url().split("/").pop()!;
 
   // Finishing early from the patient stage isn't allowed while there's time left…
   const early = await page.request.post(`/api/consultations/${id}/finish`, { data: {} });

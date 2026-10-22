@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { admin, createOnboardedUser, deleteTestUsers } from "./helpers";
+import { admin, createOnboardedUser, deleteTestUsers, startCase } from "./helpers";
 
 // A whole station with the scripted patient and examiner (PATIENT_LLM=fake): history →
 // presentation → examiner questions → marking → report, plus XP.
@@ -11,9 +11,8 @@ test("history → presentation → examiner questions → report", async ({ page
   test.setTimeout(120_000);
   const user = await createOnboardedUser();
   await page.goto(`/auth/confirm?token_hash=${user.tokenHash}&type=email&next=/hub`);
-  await page.getByRole("button", { name: "Start case" }).click();
+  const id = await startCase(page);
   await page.getByRole("button", { name: /I'm ready/ }).click();
-  const id = page.url().split("/").pop()!;
 
   const ask = page.getByLabel("Your question to the patient");
   for (const q of ["How many months has it been?", "Have your clothes been fitting looser?"]) {

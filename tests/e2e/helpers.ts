@@ -1,3 +1,4 @@
+import { expect, type Locator, type Page } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
 
 export function admin() {
@@ -49,4 +50,15 @@ export async function createOnboardedUser(specialties = ["general-practice"]) {
     .eq("id", user.id);
   if (error) throw error;
   return user;
+}
+
+/**
+ * Starts a case and waits for its station page, returning the station id. Creating the station and
+ * loading its page take about ten Supabase round trips, which from CI (far from the project) can
+ * exceed the default 10 s, so this allows 30 s.
+ */
+export async function startCase(page: Page, button: Locator = page.getByRole("button", { name: "Start case" })) {
+  await button.click();
+  await expect(page).toHaveURL(/\/station\/[0-9a-f-]{36}$/, { timeout: 30_000 });
+  return page.url().split("/").pop()!;
 }
