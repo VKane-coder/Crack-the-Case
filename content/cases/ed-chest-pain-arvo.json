@@ -43,30 +43,124 @@
         "severity": "7 out of 10"
       },
       "facts": [
-        { "id": "pain_central_tight", "category": "HPC", "content": "It's a tight, heavy feeling right in the middle of my chest.", "disclosure": "volunteered" },
-        { "id": "onset_exertion", "category": "HPC", "content": "It came on about two hours ago when I was lifting flour sacks at work.", "disclosure": "volunteered" },
-        { "id": "radiation_arm_jaw", "category": "HPC", "content": "It goes down my left arm, and my jaw aches too.", "disclosure": "on_open_question", "is_red_flag": true },
-        { "id": "sweating_nausea", "category": "HPC", "content": "I was dripping with sweat and I feel like I might be sick.", "disclosure": "on_open_question", "is_red_flag": true },
-        { "id": "ongoing_at_rest", "category": "HPC", "content": "It hasn't gone away even though I've been sitting down for ages.", "disclosure": "on_direct_question", "is_red_flag": true },
+        {
+          "id": "pain_central_tight",
+          "category": "HPC",
+          "content": "It's a tight, heavy feeling right in the middle of my chest.",
+          "disclosure": "volunteered"
+        },
+        {
+          "id": "onset_exertion",
+          "category": "HPC",
+          "content": "It came on about two hours ago when I was lifting flour sacks at work.",
+          "disclosure": "volunteered"
+        },
+        {
+          "id": "radiation_arm_jaw",
+          "category": "HPC",
+          "content": "It goes down my left arm, and my jaw aches too.",
+          "disclosure": "on_open_question",
+          "is_red_flag": true
+        },
+        {
+          "id": "sweating_nausea",
+          "category": "HPC",
+          "content": "I was dripping with sweat and I feel like I might be sick.",
+          "disclosure": "on_open_question",
+          "is_red_flag": true
+        },
+        {
+          "id": "ongoing_at_rest",
+          "category": "HPC",
+          "content": "It hasn't gone away even though I've been sitting down for ages.",
+          "disclosure": "on_direct_question",
+          "is_red_flag": true
+        },
         { "id": "severity_7", "category": "HPC", "content": "It's about a seven out of ten.", "disclosure": "on_direct_question" },
         { "id": "sob", "category": "HPC", "content": "I'm a bit short of breath, yeah.", "disclosure": "on_direct_question" },
-        { "id": "crescendo_two_weeks", "category": "HPC", "content": "For the last couple of weeks I've had a tightness when I carry stuff at work, but it went away after a few minutes rest. It's been happening more often.", "disclosure": "on_direct_question", "is_red_flag": true },
-        { "id": "no_tearing_back", "category": "ROS", "content": "No, it's not tearing and it doesn't go through to my back.", "disclosure": "on_direct_question" },
-        { "id": "no_calf_travel", "category": "ROS", "content": "No leg swelling or pain, and I haven't been on any long trips.", "disclosure": "on_direct_question" },
-        { "id": "not_pleuritic", "category": "ROS", "content": "Breathing in doesn't make it worse, and leaning forward doesn't change it.", "disclosure": "on_direct_question" },
+        {
+          "id": "crescendo_two_weeks",
+          "category": "HPC",
+          "content": "For the last couple of weeks I've had a tightness when I carry stuff at work, but it went away after a few minutes rest. It's been happening more often.",
+          "disclosure": "on_direct_question",
+          "is_red_flag": true
+        },
+        {
+          "id": "no_tearing_back",
+          "category": "ROS",
+          "content": "No, it's not tearing and it doesn't go through to my back.",
+          "disclosure": "on_direct_question"
+        },
+        {
+          "id": "no_calf_travel",
+          "category": "ROS",
+          "content": "No leg swelling or pain, and I haven't been on any long trips.",
+          "disclosure": "on_direct_question"
+        },
+        {
+          "id": "not_pleuritic",
+          "category": "ROS",
+          "content": "Breathing in doesn't make it worse, and leaning forward doesn't change it.",
+          "disclosure": "on_direct_question"
+        },
         { "id": "no_fever_cough", "category": "ROS", "content": "No fever, no cough.", "disclosure": "on_direct_question" },
-        { "id": "pmh_t2dm", "category": "PMH", "content": "I've got type 2 diabetes, about eight years now.", "disclosure": "on_open_question" },
+        {
+          "id": "pmh_t2dm",
+          "category": "PMH",
+          "content": "I've got type 2 diabetes, about eight years now.",
+          "disclosure": "on_open_question"
+        },
         { "id": "pmh_htn", "category": "PMH", "content": "My GP says my blood pressure is high.", "disclosure": "on_direct_question" },
         { "id": "pmh_chol", "category": "PMH", "content": "High cholesterol too.", "disclosure": "on_direct_question" },
-        { "id": "dh_meds", "category": "DH", "content": "I take metformin 1 gram twice a day and perindopril 5 milligrams in the morning.", "disclosure": "on_direct_question" },
-        { "id": "dh_stopped_statin", "category": "DH", "content": "I was on atorvastatin but I stopped it about six months ago because my muscles ached.", "disclosure": "on_direct_question" },
+        {
+          "id": "dh_meds",
+          "category": "DH",
+          "content": "I take metformin 1 gram twice a day and perindopril 5 milligrams in the morning.",
+          "disclosure": "on_direct_question"
+        },
+        {
+          "id": "dh_stopped_statin",
+          "category": "DH",
+          "content": "I was on atorvastatin but I stopped it about six months ago because my muscles ached.",
+          "disclosure": "on_direct_question"
+        },
         { "id": "allergy_penicillin", "category": "Allergy", "content": "Penicillin gives me a rash.", "disclosure": "on_direct_question" },
-        { "id": "sh_smoker", "category": "SH", "content": "I smoke about a pack a day, since I was about twenty.", "disclosure": "on_direct_question" },
-        { "id": "sh_alcohol", "category": "SH", "content": "A couple of beers on the weekend, that's it.", "disclosure": "on_direct_question" },
-        { "id": "sh_work_home", "category": "SH", "content": "I start at the bakery at 4am. My wife's at home, I'll need to call her.", "disclosure": "on_direct_question" },
-        { "id": "fh_father_mi", "category": "FH", "content": "My dad died of a heart attack when he was 60.", "disclosure": "on_direct_question" },
-        { "id": "ice_idea", "category": "ICE", "content": "I keep thinking about my dad. I'm scared it's my heart.", "disclosure": "on_rapport" },
-        { "id": "ice_concern_business", "category": "ICE", "content": "Who's going to run the shop tomorrow? We've got big orders.", "disclosure": "on_rapport" }
+        {
+          "id": "sh_smoker",
+          "category": "SH",
+          "content": "I smoke about a pack a day, since I was about twenty.",
+          "disclosure": "on_direct_question"
+        },
+        {
+          "id": "sh_alcohol",
+          "category": "SH",
+          "content": "A couple of beers on the weekend, that's it.",
+          "disclosure": "on_direct_question"
+        },
+        {
+          "id": "sh_work_home",
+          "category": "SH",
+          "content": "I start at the bakery at 4am. My wife's at home, I'll need to call her.",
+          "disclosure": "on_direct_question"
+        },
+        {
+          "id": "fh_father_mi",
+          "category": "FH",
+          "content": "My dad died of a heart attack when he was 60.",
+          "disclosure": "on_direct_question"
+        },
+        {
+          "id": "ice_idea",
+          "category": "ICE",
+          "content": "I keep thinking about my dad. I'm scared it's my heart.",
+          "disclosure": "on_rapport"
+        },
+        {
+          "id": "ice_concern_business",
+          "category": "ICE",
+          "content": "Who's going to run the shop tomorrow? We've got big orders.",
+          "disclosure": "on_rapport"
+        }
       ],
       "ice": {
         "ideas": "Thinks it might be his heart, like his father",
@@ -83,11 +177,31 @@
       "diagnosis": "Acute coronary syndrome (likely NSTEMI) on a background of crescendo angina",
       "diagnosis_synonyms": ["ACS", "NSTEMI", "STEMI", "myocardial infarction", "unstable angina", "acute coronary syndrome", "angina"],
       "differentials": [
-        { "dx": "Acute coronary syndrome (NSTEMI / unstable angina)", "likelihood": "leading", "discriminating_features": "Exertional onset, central heavy pain radiating to arm and jaw, diaphoresis, ongoing at rest, crescendo pattern, multiple risk factors" },
-        { "dx": "Aortic dissection", "likelihood": "must_not_miss", "discriminating_features": "Tearing pain radiating to the back, pulse or BP differential. Pain not tearing, no back radiation" },
-        { "dx": "Pulmonary embolism", "likelihood": "must_not_miss", "discriminating_features": "Pleuritic pain, haemoptysis, DVT signs, immobility. None present" },
-        { "dx": "Pericarditis", "likelihood": "possible", "discriminating_features": "Sharp pain relieved by sitting forward, recent viral illness. Absent" },
-        { "dx": "Gastro-oesophageal reflux / oesophageal spasm", "likelihood": "possible", "discriminating_features": "Burning, meal-related, relieved by antacids. Diagnosis of exclusion here" }
+        {
+          "dx": "Acute coronary syndrome (NSTEMI / unstable angina)",
+          "likelihood": "leading",
+          "discriminating_features": "Exertional onset, central heavy pain radiating to arm and jaw, diaphoresis, ongoing at rest, crescendo pattern, multiple risk factors"
+        },
+        {
+          "dx": "Aortic dissection",
+          "likelihood": "must_not_miss",
+          "discriminating_features": "Tearing pain radiating to the back, pulse or BP differential. Pain not tearing, no back radiation"
+        },
+        {
+          "dx": "Pulmonary embolism",
+          "likelihood": "must_not_miss",
+          "discriminating_features": "Pleuritic pain, haemoptysis, DVT signs, immobility. None present"
+        },
+        {
+          "dx": "Pericarditis",
+          "likelihood": "possible",
+          "discriminating_features": "Sharp pain relieved by sitting forward, recent viral illness. Absent"
+        },
+        {
+          "dx": "Gastro-oesophageal reflux / oesophageal spasm",
+          "likelihood": "possible",
+          "discriminating_features": "Burning, meal-related, relieved by antacids. Diagnosis of exclusion here"
+        }
       ],
       "red_flags": [
         { "fact_id": "radiation_arm_jaw", "why": "Radiation to arm and jaw is typical of myocardial ischaemia" },
@@ -125,22 +239,96 @@
       { "question": "What risk stratification tools could help guide his management?", "targets": ["reasoning_links"] }
     ],
     "items": [
-      { "key": "hpc_socrates", "domain": "history", "label": "Characterises the pain (site, onset, character, radiation, severity, timing)", "max_points": 4, "linked_fact_ids": ["pain_central_tight", "onset_exertion", "radiation_arm_jaw", "severity_7", "ongoing_at_rest"] },
-      { "key": "associated_symptoms", "domain": "history", "label": "Asks about associated symptoms (sweating, nausea, breathlessness)", "max_points": 2, "linked_fact_ids": ["sweating_nausea", "sob"] },
-      { "key": "prior_episodes", "domain": "history", "label": "Identifies the crescendo pattern of prior exertional pain", "max_points": 2, "linked_fact_ids": ["crescendo_two_weeks"] },
-      { "key": "cv_risk_factors", "domain": "history", "label": "Elicits cardiovascular risk factors (diabetes, hypertension, cholesterol, smoking, family history)", "max_points": 4, "linked_fact_ids": ["pmh_t2dm", "pmh_htn", "pmh_chol", "sh_smoker", "fh_father_mi"] },
-      { "key": "meds_allergies", "domain": "history", "label": "Takes a medication and allergy history, including the stopped statin", "max_points": 2, "linked_fact_ids": ["dh_meds", "dh_stopped_statin", "allergy_penicillin"] },
-      { "key": "mimics_screened", "domain": "history", "label": "Screens for dangerous mimics (dissection, PE, pericarditis)", "max_points": 3, "linked_fact_ids": ["no_tearing_back", "no_calf_travel", "not_pleuritic"] },
-      { "key": "ice_explored", "domain": "communication", "label": "Explores his fear about his heart and his worry about the bakery", "max_points": 2, "linked_fact_ids": ["ice_idea", "ice_concern_business"] },
-      { "key": "ddx_leading", "domain": "differentials", "label": "Gives acute coronary syndrome as the leading diagnosis", "max_points": 3, "is_critical": true },
-      { "key": "ddx_dangerous", "domain": "differentials", "label": "Considers aortic dissection and PE as must-not-miss differentials, with reasons", "max_points": 2 },
+      {
+        "key": "hpc_socrates",
+        "domain": "history",
+        "label": "Characterises the pain (site, onset, character, radiation, severity, timing)",
+        "max_points": 4,
+        "linked_fact_ids": ["pain_central_tight", "onset_exertion", "radiation_arm_jaw", "severity_7", "ongoing_at_rest"]
+      },
+      {
+        "key": "associated_symptoms",
+        "domain": "history",
+        "label": "Asks about associated symptoms (sweating, nausea, breathlessness)",
+        "max_points": 2,
+        "linked_fact_ids": ["sweating_nausea", "sob"]
+      },
+      {
+        "key": "prior_episodes",
+        "domain": "history",
+        "label": "Identifies the crescendo pattern of prior exertional pain",
+        "max_points": 2,
+        "linked_fact_ids": ["crescendo_two_weeks"]
+      },
+      {
+        "key": "cv_risk_factors",
+        "domain": "history",
+        "label": "Elicits cardiovascular risk factors (diabetes, hypertension, cholesterol, smoking, family history)",
+        "max_points": 4,
+        "linked_fact_ids": ["pmh_t2dm", "pmh_htn", "pmh_chol", "sh_smoker", "fh_father_mi"]
+      },
+      {
+        "key": "meds_allergies",
+        "domain": "history",
+        "label": "Takes a medication and allergy history, including the stopped statin",
+        "max_points": 2,
+        "linked_fact_ids": ["dh_meds", "dh_stopped_statin", "allergy_penicillin"]
+      },
+      {
+        "key": "mimics_screened",
+        "domain": "history",
+        "label": "Screens for dangerous mimics (dissection, PE, pericarditis)",
+        "max_points": 3,
+        "linked_fact_ids": ["no_tearing_back", "no_calf_travel", "not_pleuritic"]
+      },
+      {
+        "key": "ice_explored",
+        "domain": "communication",
+        "label": "Explores his fear about his heart and his worry about the bakery",
+        "max_points": 2,
+        "linked_fact_ids": ["ice_idea", "ice_concern_business"]
+      },
+      {
+        "key": "ddx_leading",
+        "domain": "differentials",
+        "label": "Gives acute coronary syndrome as the leading diagnosis",
+        "max_points": 3,
+        "is_critical": true
+      },
+      {
+        "key": "ddx_dangerous",
+        "domain": "differentials",
+        "label": "Considers aortic dissection and PE as must-not-miss differentials, with reasons",
+        "max_points": 2
+      },
       { "key": "inv_ecg", "domain": "investigations", "label": "Requests an immediate 12-lead ECG", "max_points": 2, "is_critical": true },
-      { "key": "inv_troponin_bloods", "domain": "investigations", "label": "Requests serial hs-troponin and appropriate bloods", "max_points": 2 },
+      {
+        "key": "inv_troponin_bloods",
+        "domain": "investigations",
+        "label": "Requests serial hs-troponin and appropriate bloods",
+        "max_points": 2
+      },
       { "key": "inv_cxr", "domain": "investigations", "label": "Requests a chest X-ray", "max_points": 1 },
-      { "key": "mx_acute", "domain": "management", "label": "Gives aspirin, analgesia/GTN, oxygen only if hypoxic, and monitoring", "max_points": 3 },
+      {
+        "key": "mx_acute",
+        "domain": "management",
+        "label": "Gives aspirin, analgesia/GTN, oxygen only if hypoxic, and monitoring",
+        "max_points": 3
+      },
       { "key": "mx_escalation", "domain": "management", "label": "Escalates early to senior / cardiology", "max_points": 2 },
-      { "key": "mx_risk_factors", "domain": "management", "label": "Addresses secondary prevention (smoking, statin, diabetes, BP)", "max_points": 1 },
-      { "key": "urgency_recognised", "domain": "patient_safety", "label": "Treats this as a time-critical presentation", "max_points": 2, "is_critical": true }
+      {
+        "key": "mx_risk_factors",
+        "domain": "management",
+        "label": "Addresses secondary prevention (smoking, statin, diabetes, BP)",
+        "max_points": 1
+      },
+      {
+        "key": "urgency_recognised",
+        "domain": "patient_safety",
+        "label": "Treats this as a time-critical presentation",
+        "max_points": 2,
+        "is_critical": true
+      }
     ]
   }
 }

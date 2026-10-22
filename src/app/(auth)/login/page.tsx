@@ -30,7 +30,7 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
           Crack the <span className="text-brand-purple">Case</span>
         </Link>
         <LoginForm next={next} initialError={error} googleEnabled={googleEnabled} />
-        <p className="mt-6 text-center text-xs text-muted-foreground">
+        <p className="text-muted-foreground mt-6 text-center text-xs">
           By continuing you agree to our terms and privacy policy. Crack the Case is a study tool, not medical advice.
         </p>
       </div>

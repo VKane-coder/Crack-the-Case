@@ -10,6 +10,7 @@
     "typecheck": "next typegen && tsc --noEmit",
     "test": "vitest run",
     "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "seed:build": "tsx scripts/build-seed.ts",
     "db:test": "bash scripts/db-test.sh",
     "test:e2e": "playwright test",

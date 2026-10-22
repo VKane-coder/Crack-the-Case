@@ -22,7 +22,10 @@ export function scoreVoice(v: VoiceOption, p: Profile): number {
   let score = 0;
   if (p.accent === "au" && /austral|aussie/.test(`${l.accent ?? ""} ${l.description ?? ""} ${v.name ?? ""}`.toLowerCase())) score += 4;
   const gender = l.gender ?? "";
-  if (p.gender && (gender === p.gender || (p.gender === "female" && /woman|female/.test(gender)) || (p.gender === "male" && /^(man|male)$/.test(gender)))) {
+  if (
+    p.gender &&
+    (gender === p.gender || (p.gender === "female" && /woman|female/.test(gender)) || (p.gender === "male" && /^(man|male)$/.test(gender)))
+  ) {
     score += 2;
   }
   const band = ageBand(p.decade);

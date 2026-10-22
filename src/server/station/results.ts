@@ -52,7 +52,12 @@ export async function loadResult(userId: string, id: string) {
       missedRedFlags: assessment.missed_red_flags as string[],
       revisionTopics: assessment.revision_topics as string[],
       comment: assessment.examiner_comment as string,
-      domains: (domains.data ?? []).map((d) => ({ domain: d.domain as string, score: Number(d.score), max: Number(d.max), pct: Number(d.pct) })),
+      domains: (domains.data ?? []).map((d) => ({
+        domain: d.domain as string,
+        score: Number(d.score),
+        max: Number(d.max),
+        pct: Number(d.pct),
+      })),
       items: ((items.data ?? []) as unknown as ItemRow[])
         .sort((a, b) => a.rubric_items.sort_order - b.rubric_items.sort_order)
         .map((i) => ({

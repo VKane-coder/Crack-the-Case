@@ -97,7 +97,18 @@ test("GET /api/cases filters for signed-in students and refuses everyone else", 
     expect(c.station_seconds).toBeLessThan(540);
     // Students only ever get the catalogue view: no diagnosis or case content.
     expect(Object.keys(c).sort()).toEqual(
-      ["candidate_brief", "difficulty", "id", "persona", "progress", "slug", "specialty_name", "specialty_slug", "station_seconds", "title"].sort(),
+      [
+        "candidate_brief",
+        "difficulty",
+        "id",
+        "persona",
+        "progress",
+        "slug",
+        "specialty_name",
+        "specialty_slug",
+        "station_seconds",
+        "title",
+      ].sort(),
     );
   }
   expect(data.specialties.map((s: { slug: string }) => s.slug)).toContain("general-practice");

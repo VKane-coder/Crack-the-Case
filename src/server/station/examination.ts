@@ -98,7 +98,15 @@ async function logCall(db: Db, userId: string, id: string, agent: "examiner_q" |
 function failure(err: unknown, model: string): ExaminerCall {
   const attached = (err as { call?: ExaminerCall }).call;
   const message = err instanceof Error ? err.message.slice(0, 300) : String(err);
-  return attached ? { ...attached, error: message } : { model, usage: { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0 }, latencyMs: 0, status: "error", error: message };
+  return attached
+    ? { ...attached, error: message }
+    : {
+        model,
+        usage: { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0 },
+        latencyMs: 0,
+        status: "error",
+        error: message,
+      };
 }
 
 // Presentation ---------------------------------------------------------------------------------
@@ -146,13 +154,23 @@ async function questions(db: Db, id: string): Promise<Question[]> {
     .eq("consultation_id", id)
     .order("ord");
   if (error) throw error;
-  return data.map((q) => ({ ord: q.ord, question: q.question, answered: q.answered_at !== null, mediaPath: q.media_path, itemKey: q.item_key }));
+  return data.map((q) => ({
+    ord: q.ord,
+    question: q.question,
+    answered: q.answered_at !== null,
+    mediaPath: q.media_path,
+    itemKey: q.item_key,
+  }));
 }
 
 export type QuestionMedia = { url: string; alt: string; caption: string | null };
 
 /** The image for an author-written question, signed only once that question is being asked. */
-export async function questionMedia(db: Db, caseVersionId: string, q: { mediaPath: string | null; itemKey: string | null }): Promise<QuestionMedia | null> {
+export async function questionMedia(
+  db: Db,
+  caseVersionId: string,
+  q: { mediaPath: string | null; itemKey: string | null },
+): Promise<QuestionMedia | null> {
   if (!q.mediaPath) return null;
   const [url, { content }] = await Promise.all([signedMediaUrl(db, q.mediaPath), caseVersion(db, caseVersionId)]);
   if (!url) return null;
@@ -187,12 +205,16 @@ export async function endPresentation(userId: string, id: string, llm: ExaminerL
 
   const { input, rubric } = await examinerInput(db, station);
   const text = input.transcripts.presentation.join("\n");
-  await db
-    .from("transcripts")
-    .upsert(
-      { consultation_id: id, kind: "presentation", text, word_count: text.split(/\s+/).filter(Boolean).length, compiled_at: new Date().toISOString() },
-      { onConflict: "consultation_id,kind" },
-    );
+  await db.from("transcripts").upsert(
+    {
+      consultation_id: id,
+      kind: "presentation",
+      text,
+      word_count: text.split(/\s+/).filter(Boolean).length,
+      compiled_at: new Date().toISOString(),
+    },
+    { onConflict: "consultation_id,kind" },
+  );
 
   const authored = input.content.examiner_items ?? [];
   if (authored.length) {
@@ -221,7 +243,9 @@ export async function endPresentation(userId: string, id: string, llm: ExaminerL
     generated = [];
   }
   if (!generated.length) {
-    generated = input.rubric.question_bank.slice(0, 2).map((q) => ({ question: q.question, rationale: "question bank fallback", targets: q.targets }));
+    generated = input.rubric.question_bank
+      .slice(0, 2)
+      .map((q) => ({ question: q.question, rationale: "question bank fallback", targets: q.targets }));
   }
 
   const keys = new Set(rubric.items.map((i) => i.key));
@@ -242,7 +266,8 @@ export async function endPresentation(userId: string, id: string, llm: ExaminerL
 /** Stores the answer to one question and returns the next, or null when they're all answered. */
 export async function answerQuestion(userId: string, id: string, input: { ord: number; answer: string }) {
   const answer = input.answer.trim();
-  if (!answer || answer.length > MAX_UTTERANCE_CHARS * 3) throw new StationError("invalid_input", "Give an answer of up to a few sentences.");
+  if (!answer || answer.length > MAX_UTTERANCE_CHARS * 3)
+    throw new StationError("invalid_input", "Give an answer of up to a few sentences.");
   const db = createAdminClient();
   const station = await loadOwned(db, userId, id);
   if (station.status !== "examiner_questions") throw new StationError("wrong_phase", "The examiner isn't asking questions right now.");
@@ -287,7 +312,10 @@ export async function finishStation(userId: string, id: string) {
   const { rubricVersionId } = await caseVersion(db, station.case_version_id);
   await db
     .from("assessments")
-    .upsert({ consultation_id: id, user_id: userId, rubric_version_id: rubricVersionId, status: "pending" }, { onConflict: "consultation_id", ignoreDuplicates: true });
+    .upsert(
+      { consultation_id: id, user_id: userId, rubric_version_id: rubricVersionId, status: "pending" },
+      { onConflict: "consultation_id", ignoreDuplicates: true },
+    );
   return { status: "assessing" as const };
 }
 
@@ -322,12 +350,16 @@ export async function runAssessment(userId: string, id: string, llm: ExaminerLlm
 
   const { input, rubric } = await examinerInput(db, station);
   const text = input.transcripts.qa.map((q, i) => `Examiner Q${i + 1}: ${q.question}\nStudent: ${q.answer ?? "(no answer)"}`).join("\n\n");
-  await db
-    .from("transcripts")
-    .upsert(
-      { consultation_id: id, kind: "examiner_qa", text, word_count: text.split(/\s+/).filter(Boolean).length, compiled_at: new Date().toISOString() },
-      { onConflict: "consultation_id,kind" },
-    );
+  await db.from("transcripts").upsert(
+    {
+      consultation_id: id,
+      kind: "examiner_qa",
+      text,
+      word_count: text.split(/\s+/).filter(Boolean).length,
+      compiled_at: new Date().toISOString(),
+    },
+    { onConflict: "consultation_id,kind" },
+  );
 
   let lastError = "";
   for (let attempt = 1; attempt <= MAX_ASSESSMENT_ATTEMPTS; attempt++) {
@@ -349,7 +381,9 @@ export async function runAssessment(userId: string, id: string, llm: ExaminerLlm
             evidence_quote: i.evidence || null,
           })),
         ),
-        db.from("assessment_domain_scores").insert(scored.domains.map((d) => ({ assessment_id: claimed.id, domain: d.domain, score: d.score, max: d.max }))),
+        db
+          .from("assessment_domain_scores")
+          .insert(scored.domains.map((d) => ({ assessment_id: claimed.id, domain: d.domain, score: d.score, max: d.max }))),
       ]);
       if (items.error) throw items.error;
       if (domains.error) throw domains.error;
@@ -387,7 +421,10 @@ export async function runAssessment(userId: string, id: string, llm: ExaminerLlm
     }
   }
 
-  await db.from("assessments").update({ status: "failed", error: lastError.slice(0, 500) }).eq("id", claimed.id);
+  await db
+    .from("assessments")
+    .update({ status: "failed", error: lastError.slice(0, 500) })
+    .eq("id", claimed.id);
   await transition(db, id, "assessing", "assessment_failed").catch(() => {});
 }
 
@@ -407,5 +444,8 @@ async function rewardCompletion(db: Db, userId: string, id: string, difficulty: 
     if (error) console.error("grant_xp failed", { code: error.code, source: line.source });
   }
   const { data: progress } = await db.from("user_progress").select("total_consultations").eq("user_id", userId).single();
-  await db.from("user_progress").update({ total_consultations: (progress?.total_consultations ?? 0) + 1 }).eq("user_id", userId);
+  await db
+    .from("user_progress")
+    .update({ total_consultations: (progress?.total_consultations ?? 0) + 1 })
+    .eq("user_id", userId);
 }

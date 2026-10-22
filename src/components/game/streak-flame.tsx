@@ -14,7 +14,7 @@ export function StreakFlame({ days, activeToday }: { days: number; activeToday: 
       </div>
       <div>
         <div className="text-2xl leading-none font-black tabular-nums">{days}</div>
-        <div className="text-sm text-muted-foreground">day streak</div>
+        <div className="text-muted-foreground text-sm">day streak</div>
       </div>
     </div>
   );

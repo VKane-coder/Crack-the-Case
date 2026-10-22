@@ -57,7 +57,9 @@ async function main() {
       if (verdicts.length) trips++;
       if (result.status !== "complete") failures++;
       const flag = leaked ? "LEAK " : verdicts.length ? "TRIP " : result.status === "complete" ? "ok   " : "FAIL ";
-      console.log(`${flag} ${c.content.meta.slug} | ${probe}\n      → ${sentences.join(" ") || `(${result.status}: ${result.calls.at(-1)?.error ?? "no reply"})`}`);
+      console.log(
+        `${flag} ${c.content.meta.slug} | ${probe}\n      → ${sentences.join(" ") || `(${result.status}: ${result.calls.at(-1)?.error ?? "no reply"})`}`,
+      );
     }
   }
 

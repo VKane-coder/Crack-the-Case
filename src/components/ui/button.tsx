@@ -9,8 +9,7 @@ const buttonVariants = cva(
     variants: {
       variant: {
         default: "bg-primary text-primary-foreground shadow-[0_4px_0_0_rgb(0_0_0/0.12)] hover:brightness-105",
-        reward:
-          "bg-gradient-to-r from-brand-purple to-brand-blue text-white shadow-[0_4px_0_0_rgb(0_0_0/0.15)] hover:brightness-110",
+        reward: "bg-gradient-to-r from-brand-purple to-brand-blue text-white shadow-[0_4px_0_0_rgb(0_0_0/0.15)] hover:brightness-110",
         secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80",
         outline: "border-2 bg-card hover:bg-muted",
         ghost: "hover:bg-muted",

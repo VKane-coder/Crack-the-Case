@@ -40,9 +40,7 @@ const escape = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 function firstMatch(text: string, phrases: string[], wordBoundary: boolean): string | undefined {
   const lower = text.toLowerCase();
-  return phrases.find((p) =>
-    wordBoundary ? new RegExp(`(^|[^a-z])${escape(p.toLowerCase())}($|[^a-z])`).test(lower) : lower.includes(p),
-  );
+  return phrases.find((p) => (wordBoundary ? new RegExp(`(^|[^a-z])${escape(p.toLowerCase())}($|[^a-z])`).test(lower) : lower.includes(p)));
 }
 
 /** @param leakTerms the diagnosis and its synonyms, lower-cased (from cases/projector leakTerms). */
