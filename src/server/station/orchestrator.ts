@@ -6,7 +6,8 @@ import { costUsd } from "@/server/agents/shared/models";
 import { leakTerms, type PatientView } from "@/server/cases/projector";
 import { DEFAULT_STATION, type CaseContent } from "@/server/cases/schema";
 import { sttUsdPerMinute, ttsAvailable, ttsUsdPer1kChars, voiceFake } from "@/server/voice/config";
-import { elevenLabsSynthesize, fakeSynthesize, resolveVoiceId } from "@/server/voice/elevenlabs";
+import { caseVoiceSynthesize, elevenLabsSynthesize, fakeSynthesize, resolveVoiceId } from "@/server/voice/elevenlabs";
+import { voiceProfileFor } from "@/server/voice/pick-voice";
 import { TtsPipeline, type AudioEvent, type Synthesize } from "@/server/voice/tts-pipeline";
 import { patientLlm } from "./llm";
 import { runPatientTurn } from "./patient-turn";
@@ -391,21 +392,23 @@ export async function patientTurn(
 
   // Voice out: each sentence that passes the guardrail is synthesised while the next is generated.
   // The voice lookup (first turn on a fresh server only) runs alongside generation, not before it.
-  const voiceId =
-    input.voice && ttsAvailable() && !voiceFake()
-      ? caseVoiceId
-        ? Promise.resolve(caseVoiceId)
-        : resolveVoiceId(content.patient.voice_profile)
-      : null;
+  // A case's own voice is tried first; if ElevenLabs refuses it, a built-in voice that fits the patient takes over.
+  const profile = voiceProfileFor(content.patient);
+  const live = input.voice && ttsAvailable() && !voiceFake();
+  const voiceId = live && !caseVoiceId ? resolveVoiceId(profile) : null;
   voiceId?.catch(() => {}); // a failed lookup surfaces through the first sentence's synthesis
   const synthesize: Synthesize | null = voiceFake()
-    ? input.voice ? fakeSynthesize() : null
-    : voiceId &&
-      (async (text, opts, sig) => {
-        const id = await voiceId;
-        if (!id) throw Object.assign(new Error("no ElevenLabs voice available"), { voiceCode: "elevenlabs_no_voice" });
-        return elevenLabsSynthesize(id)(text, opts, sig);
-      });
+    ? input.voice
+      ? fakeSynthesize()
+      : null
+    : live && caseVoiceId
+      ? caseVoiceSynthesize(caseVoiceId, profile)
+      : voiceId &&
+        (async (text, opts, sig) => {
+          const id = await voiceId;
+          if (!id) throw Object.assign(new Error("no ElevenLabs voice available"), { voiceCode: "elevenlabs_no_voice" });
+          return elevenLabsSynthesize(id)(text, opts, sig);
+        });
   let firstTextMs: number | null = null;
   let timed = false;
   // Timing goes out just before the first audio: the browser starts playing as soon as audio arrives.
