@@ -17,7 +17,17 @@ function tagged(err: unknown): Error {
   const { statusCode, body } = (err ?? {}) as { statusCode?: number; body?: { detail?: { status?: string } } };
   const reason = body?.detail?.status;
   const code = `elevenlabs_${statusCode ?? "network"}${reason ? `_${reason}` : ""}`;
-  return Object.assign(err instanceof Error ? err : new Error(String(err)), { voiceCode: code });
+  return Object.assign(err instanceof Error ? err : new Error(String(err)), { voiceCode: code, voiceStatus: statusCode, voiceReason: reason });
+}
+
+/**
+ * ElevenLabs refused this particular voice, so a different one can still speak: a Voice Library voice
+ * on a free plan ("free_users_not_allowed"), a voice that needs a paid plan, or one that no longer exists.
+ * Other failures (bad key, quota, outage) would refuse every voice, so they aren't retried with another.
+ */
+export function voiceRefused(err: unknown): boolean {
+  const { voiceStatus, voiceReason } = (err ?? {}) as { voiceStatus?: number; voiceReason?: string };
+  return voiceStatus === 402 || voiceStatus === 404 || ["free_users_not_allowed", "payment_required", "voice_not_found"].includes(voiceReason ?? "");
 }
 
 let client: ElevenLabsClient | undefined;
@@ -45,29 +55,59 @@ const picked = new Map<string, Promise<string | null>>();
 /**
  * The voice for a case's voice_profile: ELEVENLABS_VOICE_MAP / ELEVENLABS_DEFAULT_VOICE_ID when set,
  * otherwise the best match on the account (Australian accent, gender, age), chosen once per server.
+ * builtInOnly limits the pick to ElevenLabs' premade voices, which every plan can use through the API.
  */
-export function resolveVoiceId(profile: string): Promise<string | null> {
+export function resolveVoiceId(profile: string, { builtInOnly = false } = {}): Promise<string | null> {
   // Rejects (tagged) when the lookup fails, so the reason can reach the student.
   const fixed = voiceIdFor(profile);
-  if (fixed) return Promise.resolve(fixed);
-  let p = picked.get(profile);
+  if (fixed && !isRefused(fixed)) return Promise.resolve(fixed);
+  const key = `${builtInOnly ? "built-in:" : ""}${profile}`;
+  let p = picked.get(key);
   if (!p) {
     p = elevenlabs()
       .voices.search({ pageSize: 100 }, { maxRetries: 1, timeoutInSeconds: 10 })
       .then((res) => {
-        const voice = pickVoice(res.voices, profile);
-        console.info("voice auto-picked", { profile, voice: voice?.name, id: voice?.voiceId, labels: voice?.labels });
+        const voices = builtInOnly ? res.voices.filter((v) => v.category === "premade") : res.voices;
+        const voice = pickVoice(voices, profile);
+        console.info("voice auto-picked", { profile, builtInOnly, voice: voice?.name, id: voice?.voiceId, labels: voice?.labels });
         return voice?.voiceId ?? null;
       })
       .catch((err) => {
-        picked.delete(profile); // try again next turn
+        picked.delete(key); // try again next turn
         const e = tagged(err);
         console.error("voice lookup failed", { code: (e as { voiceCode?: string }).voiceCode, message: e.message });
         throw e;
       });
-    picked.set(profile, p);
+    picked.set(key, p);
   }
   return p;
+}
+
+// Voices ElevenLabs refused, until when. Remembered so later sentences and turns skip straight to the
+// fallback; it expires so that upgrading the ElevenLabs plan brings the case's own voice back.
+const REFUSED_FOR_MS = 10 * 60 * 1000;
+const refused = new Map<string, number>();
+const isRefused = (voiceId: string) => (refused.get(voiceId) ?? 0) > Date.now();
+
+/**
+ * Speaks with the case's own voice (cases.voice_id). If ElevenLabs refuses that voice, switches to the
+ * built-in voice that best fits the patient instead of leaving the student with text only.
+ */
+export function caseVoiceSynthesize(caseVoiceId: string, profile: string): Synthesize {
+  return async (text, opts, signal) => {
+    if (!isRefused(caseVoiceId)) {
+      try {
+        return await elevenLabsSynthesize(caseVoiceId)(text, opts, signal);
+      } catch (err) {
+        if (!voiceRefused(err)) throw err;
+        if (!isRefused(caseVoiceId)) console.warn("case voice refused; using a built-in voice", { caseVoiceId, code: (err as { voiceCode?: string }).voiceCode });
+        refused.set(caseVoiceId, Date.now() + REFUSED_FOR_MS);
+      }
+    }
+    const fallback = await resolveVoiceId(profile, { builtInOnly: true });
+    if (!fallback) throw Object.assign(new Error("no ElevenLabs voice available"), { voiceCode: "elevenlabs_no_voice" });
+    return elevenLabsSynthesize(fallback)(text, opts, signal);
+  };
 }
 
 export function elevenLabsSynthesize(voiceId: string): Synthesize {
