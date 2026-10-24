@@ -1,12 +1,14 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createAdminClient } from "@/lib/supabase/admin";
+import type { AvatarAccess } from "@/features/station/avatar-protocol";
+import { avatarAvailable, endAvatarSession, startAvatarSession, viewerAccess, type AvatarSession } from "@/server/avatar/lemonslice";
 import { PATIENT_PROMPT_VERSION, type ChatTurn, type Emotion, type PatientEvent } from "@/server/agents/patient";
 import { costUsd } from "@/server/agents/shared/models";
 import { leakTerms, type PatientView } from "@/server/cases/projector";
 import { DEFAULT_STATION, type CaseContent } from "@/server/cases/schema";
 import { sttUsdPerMinute, ttsAvailable, ttsUsdPer1kChars, voiceFake } from "@/server/voice/config";
-import { caseVoiceSynthesize, elevenLabsSynthesize, fakeSynthesize, resolveVoiceId } from "@/server/voice/elevenlabs";
+import { caseVoiceSynthesize, elevenLabsSynthesize, fakeSynthesize, resolveVoiceId, type TtsFormat } from "@/server/voice/elevenlabs";
 import { voiceProfileFor } from "@/server/voice/pick-voice";
 import { TtsPipeline, type AudioEvent, type Synthesize } from "@/server/voice/tts-pipeline";
 import { patientLlm } from "./llm";
@@ -83,6 +85,8 @@ export async function transition(db: Db, id: string, from: ConsultationStatus, t
     if (error.code === "55000") throw new StationError("wrong_phase", `Station is no longer in ${from}.`);
     throw error;
   }
+  // The patient's face is only needed while the student can talk to them.
+  if (!AVATAR_STAGES.includes(to)) await closeAvatar(db, data as Consultation & { client_meta?: ClientMeta });
   return data as Consultation;
 }
 
@@ -102,6 +106,59 @@ export async function caseVersion(db: Db, caseVersionId: string) {
     voiceId: extras?.voice_id ?? null,
     avatarPath: extras?.avatar_path ?? null,
   };
+}
+
+// The patient's animated face ------------------------------------------------------------------
+
+/** Stages the avatar is kept for: started during reading time (cold starts are slow), used in history. */
+const AVATAR_STAGES: ConsultationStatus[] = ["briefing", "history"];
+type ClientMeta = { avatar?: AvatarSession };
+
+/**
+ * The student's way in to their patient's avatar: a watch-only LiveKit pass and the address to feed
+ * the patient's speech to. Starts the LemonSlice session on the first call; later calls (a reload)
+ * reuse it. Null when the avatar isn't set up or the case has no picture: the station runs as before.
+ */
+export async function openAvatar(userId: string, id: string): Promise<AvatarAccess | null> {
+  if (!avatarAvailable()) return null;
+  const db = createAdminClient();
+  const station = await loadOwned(db, userId, id);
+  if (!AVATAR_STAGES.includes(station.status)) return null;
+  const existing = await avatarOf(db, id);
+  if (existing) return viewerAccess(id, userId, existing);
+
+  const { avatarPath } = await caseVersion(db, station.case_version_id);
+  const imageUrl = await avatarUrl(db, avatarPath);
+  if (!imageUrl) return null;
+  const session = await startAvatarSession(id, imageUrl);
+  // Two tabs may race to start it: the first one stored wins and the other session is ended at once.
+  const { data: stored, error } = await db
+    .from("consultations")
+    .update({ client_meta: { avatar: session } })
+    .eq("id", id)
+    .is("client_meta->avatar", null)
+    .in("status", AVATAR_STAGES)
+    .select("id");
+  if (error || !stored?.length) {
+    await endAvatarSession(session.sessionId);
+    if (error) throw error;
+    const winner = await avatarOf(db, id);
+    return winner ? viewerAccess(id, userId, winner) : null;
+  }
+  return viewerAccess(id, userId, session);
+}
+
+async function avatarOf(db: Db, id: string): Promise<AvatarSession | null> {
+  const { data } = await db.from("consultations").select("client_meta").eq("id", id).single();
+  return (data?.client_meta as ClientMeta | null)?.avatar ?? null;
+}
+
+/** Ends the station's avatar session (stopping its billing) and forgets it. */
+async function closeAvatar(db: Db, station: { id: string; client_meta?: ClientMeta }) {
+  const avatar = station.client_meta?.avatar;
+  if (!avatar) return;
+  await endAvatarSession(avatar.sessionId);
+  await db.from("consultations").update({ client_meta: {} }).eq("id", station.id);
 }
 
 // Images ---------------------------------------------------------------------------------------
@@ -343,7 +400,7 @@ const MAX_STT_SECONDS = 120;
 export async function patientTurn(
   userId: string,
   id: string,
-  input: { utterance: string; clientSeq: number; voice?: boolean; sttSeconds?: number },
+  input: { utterance: string; clientSeq: number; voice?: boolean; avatar?: boolean; sttSeconds?: number },
   emit: (e: TurnEvent) => void,
   signal: AbortSignal,
 ) {
@@ -395,6 +452,8 @@ export async function patientTurn(
   // A case's own voice is tried first; if ElevenLabs refuses it, a built-in voice that fits the patient takes over.
   const profile = voiceProfileFor(content.patient);
   const live = input.voice && ttsAvailable() && !voiceFake();
+  // With the animated face on, the browser passes the audio to LemonSlice instead of playing it.
+  const format: TtsFormat = input.avatar ? "pcm16k" : "mp3";
   const voiceId = live && !caseVoiceId ? resolveVoiceId(profile) : null;
   voiceId?.catch(() => {}); // a failed lookup surfaces through the first sentence's synthesis
   const synthesize: Synthesize | null = voiceFake()
@@ -402,12 +461,12 @@ export async function patientTurn(
       ? fakeSynthesize()
       : null
     : live && caseVoiceId
-      ? caseVoiceSynthesize(caseVoiceId, profile)
+      ? caseVoiceSynthesize(caseVoiceId, profile, format)
       : voiceId &&
         (async (text, opts, sig) => {
           const id = await voiceId;
           if (!id) throw Object.assign(new Error("no ElevenLabs voice available"), { voiceCode: "elevenlabs_no_voice" });
-          return elevenLabsSynthesize(id)(text, opts, sig);
+          return elevenLabsSynthesize(id, format)(text, opts, sig);
         });
   let firstTextMs: number | null = null;
   let timed = false;
