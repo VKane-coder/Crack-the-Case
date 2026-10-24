@@ -85,8 +85,10 @@ export async function startAvatarSession(consultationId: string, imageUrl: strin
     body: JSON.stringify({
       transport_type: "websocket-livekit",
       agent_image_url: imageUrl,
-      model: process.env.LEMONSLICE_MODEL || "cartoon",
-      aspect_ratio: "2x3", // the only ratio the cartoon model supports
+      // CWM-1 Lite: LemonSlice's low-latency, low-cost model, recommended for stylised characters
+      // (needs their Ultra plan). LEMONSLICE_MODEL overrides it, e.g. "cartoon" or "flash".
+      model: process.env.LEMONSLICE_MODEL || "cwm-1-lite",
+      aspect_ratio: "2x3", // portrait; also the only ratio the cartoon model supports
       audio_sample_rate: AVATAR_SAMPLE_RATE,
       idle_timeout: IDLE_TIMEOUT_SECONDS,
       agent_prompt: "a patient talking to their doctor",

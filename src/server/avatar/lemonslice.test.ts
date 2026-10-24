@@ -42,7 +42,7 @@ describe("avatarAvailable", () => {
 });
 
 describe("startAvatarSession", () => {
-  it("asks LemonSlice for a cartoon avatar fed over WebSocket and published into the station's room", async () => {
+  it("asks LemonSlice for a CWM-1 Lite avatar fed over WebSocket and published into the station's room", async () => {
     fetchMock.mockResolvedValue(Response.json({ session_id: "s-1", websocket_address: "wss://ls/s-1", control_url: "x" }));
     const session = await startAvatarSession("abc", "https://storage/jeanie.png?token=t");
     expect(session).toEqual({ sessionId: "s-1", websocketAddress: "wss://ls/s-1", room: "station-abc" });
@@ -54,7 +54,7 @@ describe("startAvatarSession", () => {
     expect(body).toMatchObject({
       transport_type: "websocket-livekit",
       agent_image_url: "https://storage/jeanie.png?token=t",
-      model: "cartoon",
+      model: "cwm-1-lite",
       aspect_ratio: "2x3",
       audio_sample_rate: 16000,
       idle_timeout: 600,
