@@ -16,9 +16,12 @@ const SESSIONS_URL = "https://lemonslice.com/api/liveai/sessions";
 // the session is also ended explicitly when the patient stage ends, so this is only a backstop.
 const IDLE_TIMEOUT_SECONDS = 600;
 
+/** The settings the face needs; it's off unless all are set. */
+export const AVATAR_KEYS = ["LEMONSLICE_API_KEY", "LIVEKIT_URL", "LIVEKIT_API_KEY", "LIVEKIT_API_SECRET"] as const;
+
 export function avatarAvailable() {
   if (voiceFake()) return false; // e2e runs use silent stand-ins, not a real avatar
-  return ["LEMONSLICE_API_KEY", "LIVEKIT_URL", "LIVEKIT_API_KEY", "LIVEKIT_API_SECRET"].every((k) => Boolean(process.env[k]));
+  return AVATAR_KEYS.every((k) => Boolean(process.env[k]));
 }
 
 /** What a station keeps about its avatar (consultations.client_meta.avatar). Written by the server only. */
