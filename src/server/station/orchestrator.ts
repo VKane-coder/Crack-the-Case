@@ -153,12 +153,24 @@ async function avatarOf(db: Db, id: string): Promise<AvatarSession | null> {
   return (data?.client_meta as ClientMeta | null)?.avatar ?? null;
 }
 
+/**
+ * The student closed or left the station page (or reloaded it): end the face now rather than when
+ * LemonSlice's idle timeout runs out. A reload asks for a fresh one.
+ */
+export async function closeAvatarFor(userId: string, id: string) {
+  const db = createAdminClient();
+  await loadOwned(db, userId, id); // their own station only
+  const { data } = await db.from("consultations").select("id, client_meta").eq("id", id).single();
+  if (data) await closeAvatar(db, data as { id: string; client_meta?: ClientMeta });
+}
+
 /** Ends the station's avatar session (stopping its billing) and forgets it. */
 async function closeAvatar(db: Db, station: { id: string; client_meta?: ClientMeta }) {
   const avatar = station.client_meta?.avatar;
   if (!avatar) return;
-  await endAvatarSession(avatar.sessionId);
+  // Forget it first, so a page reloading at this moment starts a fresh face instead of reusing this one.
   await db.from("consultations").update({ client_meta: {} }).eq("id", station.id);
+  await endAvatarSession(avatar.sessionId);
 }
 
 // Images ---------------------------------------------------------------------------------------

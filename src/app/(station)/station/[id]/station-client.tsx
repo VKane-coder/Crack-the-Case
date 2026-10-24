@@ -128,6 +128,26 @@ export function StationClient({
     [],
   );
 
+  // Closing the tab, leaving or reloading the page ends the face at once (it bills while it runs). The
+  // request is sent with keepalive so it still goes out as the page unloads; a reload starts a fresh face.
+  useEffect(() => {
+    if (!avatarLink) return;
+    const end = () => {
+      avatarLink.close();
+      void fetch(`${api}/avatar`, { method: "DELETE", keepalive: true, headers: { "content-type": "application/json" }, body: "{}" }).catch(() => {});
+    };
+    // A page restored from the browser's back/forward cache has lost its face: load it afresh.
+    const restored = (e: PageTransitionEvent) => {
+      if (e.persisted) window.location.reload();
+    };
+    window.addEventListener("pagehide", end);
+    window.addEventListener("pageshow", restored);
+    return () => {
+      window.removeEventListener("pagehide", end);
+      window.removeEventListener("pageshow", restored);
+    };
+  }, [avatarLink, api]);
+
   // The face starts during reading time (it can take a while to warm up) and goes when the patient stage ends.
   useEffect(() => {
     patientStage.current = status === "briefing" || status === "history";

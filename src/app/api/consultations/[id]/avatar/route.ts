@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { AvatarError } from "@/server/avatar/lemonslice";
 import { errorBody, stationRoute } from "@/server/station/http";
-import { openAvatar } from "@/server/station/orchestrator";
+import { closeAvatarFor, openAvatar } from "@/server/station/orchestrator";
 
 export const maxDuration = 60;
 
@@ -18,4 +18,11 @@ export const POST = stationRoute<{ id: string }>(async ({ user, params }) => {
     console.warn("avatar unavailable", { message: err.message });
     return NextResponse.json(errorBody("avatar_unavailable", err.message, true), { status: 503 });
   }
+});
+
+// DELETE {} → { data: null }. Sent as the station page closes (tab closed, navigated away, reloaded),
+// so the face stops at once instead of running until LemonSlice's idle timeout.
+export const DELETE = stationRoute<{ id: string }>(async ({ user, params }) => {
+  await closeAvatarFor(user.id, params.id);
+  return NextResponse.json({ data: null });
 });
