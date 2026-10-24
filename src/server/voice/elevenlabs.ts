@@ -10,7 +10,13 @@ import type { Synthesize } from "./tts-pipeline";
 // keeps each sentence small enough to send inline in the NDJSON stream.
 
 export const TTS_MODEL = "eleven_flash_v2_5";
-const OUTPUT_FORMAT = "mp3_44100_64" as const;
+
+/** MP3 for the browser to play; raw 16 kHz PCM for the animated face, which plays it in sync with the video. */
+export type TtsFormat = "mp3" | "pcm16k";
+const OUTPUT = {
+  mp3: { outputFormat: "mp3_44100_64", mime: "audio/mpeg" },
+  pcm16k: { outputFormat: "pcm_16000", mime: "audio/pcm;rate=16000" },
+} as const;
 
 /** Tags an ElevenLabs failure with its status and reason (e.g. "elevenlabs_401_missing_permissions"). */
 function tagged(err: unknown): Error {
@@ -93,11 +99,11 @@ const isRefused = (voiceId: string) => (refused.get(voiceId) ?? 0) > Date.now();
  * Speaks with the case's own voice (cases.voice_id). If ElevenLabs refuses that voice, switches to the
  * built-in voice that best fits the patient instead of leaving the student with text only.
  */
-export function caseVoiceSynthesize(caseVoiceId: string, profile: string): Synthesize {
+export function caseVoiceSynthesize(caseVoiceId: string, profile: string, format: TtsFormat = "mp3"): Synthesize {
   return async (text, opts, signal) => {
     if (!isRefused(caseVoiceId)) {
       try {
-        return await elevenLabsSynthesize(caseVoiceId)(text, opts, signal);
+        return await elevenLabsSynthesize(caseVoiceId, format)(text, opts, signal);
       } catch (err) {
         if (!voiceRefused(err)) throw err;
         if (!isRefused(caseVoiceId)) console.warn("case voice refused; using a built-in voice", { caseVoiceId, code: (err as { voiceCode?: string }).voiceCode });
@@ -106,11 +112,11 @@ export function caseVoiceSynthesize(caseVoiceId: string, profile: string): Synth
     }
     const fallback = await resolveVoiceId(profile, { builtInOnly: true });
     if (!fallback) throw Object.assign(new Error("no ElevenLabs voice available"), { voiceCode: "elevenlabs_no_voice" });
-    return elevenLabsSynthesize(fallback)(text, opts, signal);
+    return elevenLabsSynthesize(fallback, format)(text, opts, signal);
   };
 }
 
-export function elevenLabsSynthesize(voiceId: string): Synthesize {
+export function elevenLabsSynthesize(voiceId: string, format: TtsFormat = "mp3"): Synthesize {
   return async (text, { emotion, previousText }, signal) => {
     const stream = await elevenlabs()
       .textToSpeech.stream(
@@ -118,7 +124,7 @@ export function elevenLabsSynthesize(voiceId: string): Synthesize {
       {
         text,
         modelId: TTS_MODEL,
-        outputFormat: OUTPUT_FORMAT,
+        outputFormat: OUTPUT[format].outputFormat,
         languageCode: "en",
         previousText: previousText || undefined,
         voiceSettings: { ...voiceSettingsFor(emotion), style: 0, useSpeakerBoost: false },
@@ -128,7 +134,7 @@ export function elevenLabsSynthesize(voiceId: string): Synthesize {
       .catch((err) => {
         throw tagged(err);
       });
-    return { data: await collect(stream), mime: "audio/mpeg" };
+    return { data: await collect(stream), mime: OUTPUT[format].mime };
   };
 }
 

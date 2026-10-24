@@ -10,6 +10,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { AudioQueue } from "@/features/station/audio-queue";
+import type { AvatarLink, AvatarState } from "@/features/station/avatar-link";
+import type { AvatarAccess } from "@/features/station/avatar-protocol";
+import { pcmRate, pcmToWav } from "@/features/station/pcm";
 import { readNdjson, type PatientStreamEvent } from "@/features/station/ndjson";
 import { useSpeechInput } from "@/features/station/use-speech-input";
 import type { StationData } from "@/server/station/orchestrator";
@@ -40,7 +43,7 @@ type TurnClock = {
 const secs = (ms: number) => `${(Math.max(0, ms) / 1000).toFixed(1)}s`;
 
 /** "2.4s to voice: speech-to-text 0.4s · network 0.3s · …" for preview builds, to see where a reply's wait goes. */
-function describeLatency(c: TurnClock, playAt: number) {
+function describeLatency(c: TurnClock, playAt: number, last: "playback" | "face" = "playback") {
   const parts = [];
   if (c.releasedAt !== null) parts.push(`speech-to-text ${secs(c.sentAt - c.releasedAt)}`);
   if (c.server && c.audioAt) {
@@ -51,7 +54,8 @@ function describeLatency(c: TurnClock, playAt: number) {
       parts.push(`Claude ${secs(s.firstTextMs - s.readyMs)}`);
       parts.push(`voice ${secs(s.firstAudioMs - s.firstTextMs)}`);
     }
-    parts.push(`playback ${secs(playAt - c.audioAt)}`);
+    // "face": LemonSlice animating the reply until LiveKit hears it talking (its speaker detection adds a little).
+    parts.push(`${last} ${secs(playAt - c.audioAt)}`);
   }
   const region = c.server?.region ? ` (server ${c.server.region})` : "";
   return `${secs(playAt - (c.releasedAt ?? c.sentAt))} to voice${region}: ${parts.join(" · ")}`;
@@ -92,6 +96,19 @@ export function StationClient({
   const logRef = useRef<HTMLDivElement>(null);
   const talk = useRef<TalkControlsHandle>(null);
   const audio = useRef<AudioQueue | null>(null);
+  // The patient's animated face, when LemonSlice is set up and the case has a picture.
+  const avatar = useRef<AvatarLink | null>(null);
+  const [avatarLink, setAvatarLink] = useState<AvatarLink | null>(null);
+  const [avatarState, setAvatarState] = useState<AvatarState | null>(null);
+  const [avatarSpeaking, setAvatarSpeaking] = useState(false);
+  const [avatarProblem, setAvatarProblem] = useState<string | null>(null);
+  const avatarRequested = useRef(false);
+  const patientStage = useRef(false);
+  /** Barge-in: the patient stops talking, whether through the speaker or the animated face. */
+  const silence = () => {
+    audio.current?.stop();
+    avatar.current?.interrupt();
+  };
   const player = () =>
     (audio.current ??= new AudioQueue((p) => {
       setPlaying(p);
@@ -104,7 +121,68 @@ export function StationClient({
   const speaking = status === "history" || status === "presentation" || status === "examiner_questions";
   const speech = useSpeechInput(station.id, voice.input && speaking);
 
-  useEffect(() => () => audio.current?.stop(), []);
+  useEffect(
+    () => () => {
+      audio.current?.stop();
+      avatar.current?.close();
+    },
+    [],
+  );
+
+  // Closing the tab, leaving or reloading the page ends the face at once (it bills while it runs). The
+  // request is sent with keepalive so it still goes out as the page unloads; a reload starts a fresh face.
+  useEffect(() => {
+    if (!avatarLink) return;
+    const end = () => {
+      avatarLink.close();
+      void fetch(`${api}/avatar`, { method: "DELETE", keepalive: true, headers: { "content-type": "application/json" }, body: "{}" }).catch(() => {});
+    };
+    // A page restored from the browser's back/forward cache has lost its face: load it afresh.
+    const restored = (e: PageTransitionEvent) => {
+      if (e.persisted) window.location.reload();
+    };
+    window.addEventListener("pagehide", end);
+    window.addEventListener("pageshow", restored);
+    return () => {
+      window.removeEventListener("pagehide", end);
+      window.removeEventListener("pageshow", restored);
+    };
+  }, [avatarLink, api]);
+
+  // The face starts during reading time (it can take a while to warm up) and goes when the patient stage ends.
+  useEffect(() => {
+    patientStage.current = status === "briefing" || status === "history";
+    if (!patientStage.current) {
+      avatar.current?.close();
+      return;
+    }
+    if (!voice.output || avatarRequested.current) return;
+    avatarRequested.current = true;
+    void post<AvatarAccess | null>(`${api}/avatar`).then(async (res) => {
+      if (res.error) setAvatarProblem(res.error.message);
+      if (!res.data || !patientStage.current) return; // not set up, no picture for this case, or already moved on
+      // Loaded only when there's a face to show: the video library is large.
+      const { AvatarLink } = await import("@/features/station/avatar-link");
+      if (!patientStage.current) return;
+      const link = new AvatarLink(res.data, {
+        state: setAvatarState,
+        speaking: setAvatarSpeaking,
+        // A reply's wait ends when the face is heard talking, not when its audio is handed to LemonSlice.
+        heard: () => {
+          if (!clock.current?.audioAt) return;
+          setLatency(describeLatency(clock.current, performance.now(), "face"));
+          clock.current = null;
+        },
+      });
+      avatar.current = link;
+      setAvatarLink(link);
+      setAvatarState("connecting");
+      link.connect().catch(() => {
+        link.close();
+        setAvatarState("lost");
+      });
+    });
+  }, [status, api, voice.output]);
   useEffect(() => {
     logRef.current?.scrollTo({ top: logRef.current.scrollHeight, behavior: "smooth" });
   }, [messages, live, segments]);
@@ -113,6 +191,7 @@ export function StationClient({
 
   const startHistory = useCallback(async () => {
     audio.current?.unlock();
+    avatar.current?.startAudio();
     setBusy(true);
     setError(null);
     const res = await post<{ deadline: string; opening: string | null }>(`${api}/start-history`);
@@ -138,7 +217,7 @@ export function StationClient({
   const moveToExaminer = useCallback(async () => {
     if (ending.current) return;
     ending.current = true;
-    audio.current?.stop();
+    silence();
     const res = await post(`${api}/end-history`);
     ending.current = false;
     if (res.error) return setError(res.error.message);
@@ -174,7 +253,7 @@ export function StationClient({
   /** The station clock ran out: like the bell in a real OSCE, everything stops and marking begins. */
   const timeUp = useCallback(() => {
     if (finishing.current) return;
-    audio.current?.stop();
+    silence();
     setTimedOut(true);
     void finish();
     // eslint-disable-next-line react-hooks/exhaustive-deps -- finish only uses api and setters
@@ -236,7 +315,7 @@ export function StationClient({
     if (live !== null || status !== "history") return false;
     const clientSeq = messages.filter((m) => m.role === "student").length;
     setError(null);
-    audio.current?.stop();
+    silence();
     setMessages((m) => [...m, { role: "student", content: utterance }]);
     setLive("");
 
@@ -256,7 +335,13 @@ export function StationClient({
       const res = await fetch(`${api}/patient-turn`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ utterance, clientSeq, voice: voiceOn, sttSeconds: spoken?.seconds ?? 0 }),
+        body: JSON.stringify({
+          utterance,
+          clientSeq,
+          voice: voiceOn,
+          avatar: voiceOn && avatar.current?.state === "ready",
+          sttSeconds: spoken?.seconds ?? 0,
+        }),
       });
       if (!res.ok || !res.body) {
         const body = await res.json().catch(() => null);
@@ -267,11 +352,13 @@ export function StationClient({
           else if (ev.type === "text") setLive((reply = reply ? `${reply} ${ev.text}` : ev.text));
           else if (ev.type === "reset") {
             setLive((reply = ""));
-            audio.current?.stop();
+            silence();
           } else if (ev.type === "audio" && voiceOn) {
             setVoiceError(null);
             if (clock.current && !clock.current.audioAt) clock.current.audioAt = performance.now();
-            player().enqueue(ev.data, ev.mime);
+            const rate = pcmRate(ev.mime);
+            if (rate === null) player().enqueue(ev.data, ev.mime);
+            else if (!avatar.current?.speak(ev.data)) player().enqueue(pcmToWav(ev.data, rate), "audio/wav"); // the face dropped out mid-reply
           } else if (ev.type === "voice_error") setVoiceError(ev.code);
           else if (ev.type === "timing" && clock.current) clock.current.server = ev;
           else if (ev.type === "done") commit();
@@ -281,6 +368,7 @@ export function StationClient({
     } catch {
       if (!committed) failure = { code: "network", message: "Connection lost. Please try again." };
     }
+    avatar.current?.endReply();
 
     if (committed) return true; // a dropped connection after "done" only loses trailing audio
     setLive(null);
@@ -399,11 +487,12 @@ export function StationClient({
             name={station.patient.name}
             age={station.patient.age}
             emotion={emotion ?? "neutral"}
-            speaking={live !== null || playing}
+            speaking={live !== null || playing || avatarSpeaking}
             avatarUrl={station.patient.avatarUrl}
           />
           <PhaseTimer remainingMs={remaining} label="Station" />
         </div>
+        {avatarLink && avatarState === "ready" && <AvatarFace link={avatarLink} name={station.patient.name} />}
         <div ref={logRef} className="flex-1 space-y-3 overflow-y-auto rounded-2xl border bg-muted/30 p-4" role="log" aria-live="polite" aria-label="Consultation">
           {messages.map((m, i) => (
             <Bubble key={i} role={m.role} emotion={m.emotion}>
@@ -424,7 +513,8 @@ export function StationClient({
           busy={live !== null}
           onTalkStart={() => {
             player().unlock();
-            audio.current?.stop();
+            avatar.current?.startAudio();
+            silence();
           }}
           onSubmit={askPatient}
           onError={setError}
@@ -432,6 +522,19 @@ export function StationClient({
           placeholder={voice.input ? "Or type a question…" : `Ask ${station.patient.name.split(" ")[0]} a question…`}
         />
         {showLatency && latency && <p className="text-center text-xs text-muted-foreground">{latency}</p>}
+        {avatarState === "connecting" && (
+          <p role="status" className="text-center text-sm text-muted-foreground">
+            Bringing {station.patient.name.split(" ")[0]} in… you can start talking now.
+          </p>
+        )}
+        {avatarState === "lost" && voiceOn && (
+          <p role="status" className="text-center text-sm text-muted-foreground">
+            {station.patient.name.split(" ")[0]}&apos;s animated face isn&apos;t available right now, so you&apos;ll hear their voice only.
+          </p>
+        )}
+        {showLatency && avatarProblem && (
+          <p className="text-center text-xs text-muted-foreground">Preview: animated face unavailable ({avatarProblem})</p>
+        )}
         {voiceOn && voiceError && (
           <p role="status" className="text-center text-sm text-muted-foreground">
             {station.patient.name.split(" ")[0]}&apos;s voice isn&apos;t working right now, so replies are text only.{" "}
@@ -443,7 +546,7 @@ export function StationClient({
             <Button
               variant="ghost"
               onClick={() => {
-                if (voiceOn) audio.current?.stop();
+                if (voiceOn) silence();
                 setVoiceOn(!voiceOn);
               }}
               aria-pressed={voiceOn}
@@ -676,4 +779,16 @@ function Bubble({ role, emotion, children }: { role: Msg["role"]; emotion?: stri
       </div>
     </div>
   );
+}
+
+/** The patient's animated face: LemonSlice's video, mounted where the page wants it. */
+function AvatarFace({ link, name }: { link: AvatarLink; name: string }) {
+  const box = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = box.current;
+    if (!el) return;
+    el.appendChild(link.video);
+    return () => link.video.remove();
+  }, [link]);
+  return <div ref={box} role="img" aria-label={`${name}, your patient`} className="mx-auto aspect-[2/3] h-[34dvh] shrink-0 overflow-hidden rounded-2xl bg-muted" />;
 }

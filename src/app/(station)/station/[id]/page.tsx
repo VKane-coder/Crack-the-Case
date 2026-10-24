@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getProfileWithProgress } from "@/server/auth/session";
+import { AVATAR_KEYS } from "@/server/avatar/lemonslice";
 import { loadStation } from "@/server/station/orchestrator";
 import { sttAvailable, ttsAvailable } from "@/server/voice/config";
 import { StationClient } from "./station-client";
@@ -19,9 +20,16 @@ export default async function StationPage({ params }: PageProps<"/station/[id]">
   const station = await loadStation(profile.id, id, await createClient());
   if (!station) notFound();
 
-  // Previews say which voice keys are missing, so a Vercel env-var mistake is visible at a glance.
+  // Previews say which voice and face keys are missing, so a Vercel env-var mistake is visible at a glance.
   const missing = [!sttAvailable() && "DEEPGRAM_API_KEY", !ttsAvailable() && "ELEVENLABS_API_KEY"].filter(Boolean);
-  const setupNote = process.env.VERCEL_ENV === "preview" && missing.length ? `Preview setup: ${missing.join(" and ")} not found, so voice is off.` : null;
+  const missingFace = AVATAR_KEYS.filter((k) => !process.env[k]);
+  const preview = process.env.VERCEL_ENV === "preview";
+  const setupNote = [
+    preview && missing.length && `Preview setup: ${missing.join(" and ")} not found, so voice is off.`,
+    preview && missingFace.length && `Preview setup: ${missingFace.join(", ")} not found, so the animated face is off.`,
+  ]
+    .filter(Boolean)
+    .join(" ");
 
   return (
     <div className="min-h-dvh bg-background">

@@ -10,6 +10,18 @@ export const getUser = cache(async () => {
   return data.user;
 });
 
+/**
+ * The signed-in user's id, checked on this server from the session token's signature (the project's
+ * ES256 signing keys) instead of asking Supabase Auth over the network. For the station's API calls,
+ * where every round trip delays the patient's reply; pages keep the full getUser() check.
+ */
+export const getUserId = cache(async (): Promise<string | null> => {
+  const supabase = await createClient();
+  const { data, error } = await supabase.auth.getClaims();
+  if (error || !data?.claims.sub) return null;
+  return data.claims.sub;
+});
+
 export async function requireUser(next?: string) {
   const user = await getUser();
   if (!user) redirect(next ? `/login?next=${encodeURIComponent(next)}` : "/login");

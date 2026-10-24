@@ -4,9 +4,10 @@ import { patientTurn, StationError } from "@/server/station/orchestrator";
 
 export const maxDuration = 60;
 
-// POST { utterance, clientSeq, voice?, sttSeconds? } → NDJSON stream, one event per line:
+// POST { utterance, clientSeq, voice?, avatar?, sttSeconds? } → NDJSON stream, one event per line:
 //   {"type":"emotion","emotion":"anxious"}  {"type":"text","text":"…"}  {"type":"reset"}
-//   {"type":"audio","index":0,"mime":"audio/mpeg","data":"<base64>"}  (voice: true, one per sentence, in order)
+//   {"type":"audio","index":0,"mime":"audio/mpeg","data":"<base64>"}  (voice: true, one per sentence, in order;
+//     with avatar: true it's 16 kHz PCM, "audio/pcm;rate=16000", for the browser to pass to the animated face)
 //   {"type":"done"} once the turn is saved (audio may still follow), or {"type":"error","code":"…","message":"…"}
 // Text arrives sentence by sentence; "reset" withdraws everything shown so far for this turn.
 export const POST = stationRoute<{ id: string }>(async ({ user, params, body }) => {
@@ -33,6 +34,7 @@ export const POST = stationRoute<{ id: string }>(async ({ user, params, body }) 
             utterance: String(body.utterance ?? ""),
             clientSeq: Number(body.clientSeq),
             voice: body.voice === true,
+            avatar: body.avatar === true,
             sttSeconds: Number(body.sttSeconds) || 0,
           },
           (e) => send(e.type === "sentence" ? { type: "text", text: e.text } : e),
