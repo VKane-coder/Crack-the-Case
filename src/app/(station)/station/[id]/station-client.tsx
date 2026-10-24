@@ -43,7 +43,7 @@ type TurnClock = {
 const secs = (ms: number) => `${(Math.max(0, ms) / 1000).toFixed(1)}s`;
 
 /** "2.4s to voice: speech-to-text 0.4s · network 0.3s · …" for preview builds, to see where a reply's wait goes. */
-function describeLatency(c: TurnClock, playAt: number) {
+function describeLatency(c: TurnClock, playAt: number, last: "playback" | "face" = "playback") {
   const parts = [];
   if (c.releasedAt !== null) parts.push(`speech-to-text ${secs(c.sentAt - c.releasedAt)}`);
   if (c.server && c.audioAt) {
@@ -54,7 +54,8 @@ function describeLatency(c: TurnClock, playAt: number) {
       parts.push(`Claude ${secs(s.firstTextMs - s.readyMs)}`);
       parts.push(`voice ${secs(s.firstAudioMs - s.firstTextMs)}`);
     }
-    parts.push(`playback ${secs(playAt - c.audioAt)}`);
+    // "face": LemonSlice animating the reply until LiveKit hears it talking (its speaker detection adds a little).
+    parts.push(`${last} ${secs(playAt - c.audioAt)}`);
   }
   const region = c.server?.region ? ` (server ${c.server.region})` : "";
   return `${secs(playAt - (c.releasedAt ?? c.sentAt))} to voice${region}: ${parts.join(" · ")}`;
@@ -163,7 +164,16 @@ export function StationClient({
       // Loaded only when there's a face to show: the video library is large.
       const { AvatarLink } = await import("@/features/station/avatar-link");
       if (!patientStage.current) return;
-      const link = new AvatarLink(res.data, { state: setAvatarState, speaking: setAvatarSpeaking });
+      const link = new AvatarLink(res.data, {
+        state: setAvatarState,
+        speaking: setAvatarSpeaking,
+        // A reply's wait ends when the face is heard talking, not when its audio is handed to LemonSlice.
+        heard: () => {
+          if (!clock.current?.audioAt) return;
+          setLatency(describeLatency(clock.current, performance.now(), "face"));
+          clock.current = null;
+        },
+      });
       avatar.current = link;
       setAvatarLink(link);
       setAvatarState("connecting");
@@ -349,11 +359,6 @@ export function StationClient({
             const rate = pcmRate(ev.mime);
             if (rate === null) player().enqueue(ev.data, ev.mime);
             else if (!avatar.current?.speak(ev.data)) player().enqueue(pcmToWav(ev.data, rate), "audio/wav"); // the face dropped out mid-reply
-            else if (clock.current) {
-              // The face starts talking once LemonSlice renders it; the send is as close as we can measure.
-              setLatency(describeLatency(clock.current, performance.now()));
-              clock.current = null;
-            }
           } else if (ev.type === "voice_error") setVoiceError(ev.code);
           else if (ev.type === "timing" && clock.current) clock.current.server = ev;
           else if (ev.type === "done") commit();

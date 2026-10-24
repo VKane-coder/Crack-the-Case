@@ -30,6 +30,8 @@ export class AvatarLink {
     private readonly on: {
       state: (s: AvatarState) => void;
       speaking: (speaking: boolean) => void;
+      /** The face is audibly talking (LiveKit's active-speaker signal), for the latency readout. */
+      heard?: () => void;
     },
   ) {
     this.video = document.createElement("video");
@@ -59,7 +61,10 @@ export class AvatarLink {
       .on(RoomEvent.ParticipantDisconnected, (p: RemoteParticipant) => {
         if (p.identity === AVATAR_IDENTITY) this.lose();
       })
-      .on(RoomEvent.Disconnected, () => this.lose());
+      .on(RoomEvent.Disconnected, () => this.lose())
+      .on(RoomEvent.ActiveSpeakersChanged, (speakers) => {
+        if (speakers.some((p) => p.identity === AVATAR_IDENTITY)) this.on.heard?.();
+      });
 
     const ws = new WebSocket(this.access.websocketAddress);
     this.ws = ws;
