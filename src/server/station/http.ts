@@ -1,7 +1,6 @@
 import "server-only";
 import { NextResponse, type NextRequest } from "next/server";
-import type { User } from "@supabase/supabase-js";
-import { getUser } from "@/server/auth/session";
+import { getUserId } from "@/server/auth/session";
 import { StationError } from "./orchestrator";
 
 // Shared plumbing for /api/consultations/*: auth, JSON-only bodies, and the
@@ -26,7 +25,7 @@ export function stationErrorResponse(err: unknown) {
   return NextResponse.json(errorBody("server_error", "Something went wrong on our side. Please try again.", true), { status: 500 });
 }
 
-type Handler<P> = (ctx: { request: NextRequest; user: User; params: P; body: Record<string, unknown> }) => Promise<Response>;
+type Handler<P> = (ctx: { request: NextRequest; user: { id: string }; params: P; body: Record<string, unknown> }) => Promise<Response>;
 
 export function stationRoute<P>(handler: Handler<P>) {
   return async (request: NextRequest, { params }: { params: Promise<P> }) => {
@@ -34,8 +33,9 @@ export function stationRoute<P>(handler: Handler<P>) {
     if (!request.headers.get("content-type")?.startsWith("application/json")) {
       return NextResponse.json(errorBody("invalid_input", "Expected a JSON body."), { status: 415 });
     }
-    const user = await getUser();
-    if (!user) return NextResponse.json(errorBody("unauthenticated", "Please sign in again."), { status: 401 });
+    const userId = await getUserId();
+    if (!userId) return NextResponse.json(errorBody("unauthenticated", "Please sign in again."), { status: 401 });
+    const user = { id: userId };
     let body: Record<string, unknown>;
     try {
       const parsed: unknown = await request.json();
