@@ -2,9 +2,16 @@
 // when ELEVENLABS_VOICE_MAP doesn't name one. Voice labels are free-form, so matching is tolerant:
 // accent first (Australian), then gender, then rough age.
 
-export type VoiceOption = { voiceId: string; name?: string; labels?: Record<string, string> };
+export type VoiceOption = { voiceId: string; name?: string; category?: string; labels?: Record<string, string> };
 
 export type Profile = { accent: string; gender: string; decade: number | null };
+
+/** The case's voice_profile, or one built from the patient's sex and age (imported cases don't set one). */
+export function voiceProfileFor(patient: { voice_profile?: string; sex: string; age: number }): string {
+  if (patient.voice_profile) return patient.voice_profile;
+  const gender = patient.sex === "female" || patient.sex === "male" ? patient.sex : "";
+  return `au-${gender}-${Math.floor(patient.age / 10) * 10}s`;
+}
 
 export function parseProfile(profile: string): Profile {
   const [accent = "", gender = "", age = ""] = profile.toLowerCase().split("-");
