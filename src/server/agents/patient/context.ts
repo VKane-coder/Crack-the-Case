@@ -87,12 +87,7 @@ export type PatientRequest = {
  * @param history every turn after the opening statement, oldest first; the last turn is the student's.
  * @param correction optional operator note for a regeneration (guardrail retry), appended after the state.
  */
-export function buildPatientRequest(
-  view: PatientView,
-  history: ChatTurn[],
-  state: StationState,
-  correction?: string,
-): PatientRequest {
+export function buildPatientRequest(view: PatientView, history: ChatTurn[], state: StationState, correction?: string): PatientRequest {
   const system: Anthropic.Beta.BetaTextBlockParam[] = [
     { type: "text", text: ROLE_CONTRACT },
     { type: "text", text: PERSONA_PROFILES[view.persona] },

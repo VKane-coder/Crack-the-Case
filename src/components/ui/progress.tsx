@@ -13,13 +13,13 @@ function Progress({
   return (
     <ProgressPrimitive.Root
       data-slot="progress"
-      className={cn("relative h-3 w-full overflow-hidden rounded-full bg-muted", className)}
+      className={cn("bg-muted relative h-3 w-full overflow-hidden rounded-full", className)}
       value={value}
       {...props}
     >
       <ProgressPrimitive.Indicator
         data-slot="progress-indicator"
-        className={cn("h-full rounded-full bg-primary transition-[width] duration-700 ease-out", indicatorClassName)}
+        className={cn("bg-primary h-full rounded-full transition-[width] duration-700 ease-out", indicatorClassName)}
         // Width (not translate) so gradients span only the filled portion.
         style={{ width: `${value ?? 0}%` }}
       />

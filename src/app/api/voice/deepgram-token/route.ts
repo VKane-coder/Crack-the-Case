@@ -25,8 +25,5 @@ export const POST = stationRoute<object>(async ({ user, body }) => {
     const code = `deepgram_${statusCode ?? "network"}${dgBody?.err_code ? `_${dgBody.err_code}` : ""}`;
     return NextResponse.json(errorBody(code, "Voice input isn't available right now. You can type instead.", true), { status: 502 });
   }
-  return NextResponse.json(
-    { data: { provider: "deepgram", ...token, settings } },
-    { headers: { "cache-control": "no-store" } },
-  );
+  return NextResponse.json({ data: { provider: "deepgram", ...token, settings } }, { headers: { "cache-control": "no-store" } });
 });

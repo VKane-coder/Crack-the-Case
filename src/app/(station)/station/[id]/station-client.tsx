@@ -3,7 +3,19 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowRight, BookOpen, CheckCircle2, ClipboardList, ListChecks, Loader2, Presentation, RotateCcw, UserRound, Volume2, VolumeX } from "lucide-react";
+import {
+  ArrowRight,
+  BookOpen,
+  CheckCircle2,
+  ClipboardList,
+  ListChecks,
+  Loader2,
+  Presentation,
+  RotateCcw,
+  UserRound,
+  Volume2,
+  VolumeX,
+} from "lucide-react";
 import { faceFor, PatientStage } from "@/components/station/patient-stage";
 import { formatClock, PhaseTimer } from "@/components/station/phase-timer";
 import { Button } from "@/components/ui/button";
@@ -152,7 +164,9 @@ export function StationClient({
     ending.current = true;
     setBusy(true);
     setError(null);
-    const res = await post<{ question: { ord: number; text: string; media: Media | null } | null; total: number }>(`${api}/end-presentation`);
+    const res = await post<{ question: { ord: number; text: string; media: Media | null } | null; total: number }>(
+      `${api}/end-presentation`,
+    );
     ending.current = false;
     setBusy(false);
     if (!res.data) return setError(res.error?.message ?? "The examiner couldn't load a question. Please try again.");
@@ -212,7 +226,9 @@ export function StationClient({
     if (status !== "assessing") return;
     let stopped = false;
     const t = setInterval(async () => {
-      const res = await fetch(`${api}/result`, { cache: "no-store" }).then((r) => r.json()).catch(() => null);
+      const res = await fetch(`${api}/result`, { cache: "no-store" })
+        .then((r) => r.json())
+        .catch(() => null);
       const next = res?.data?.status as string | undefined;
       if (stopped || (next !== "completed" && next !== "assessment_failed")) return;
       stopped = true;
@@ -337,7 +353,7 @@ export function StationClient({
   }
 
   const errorBox = error && (
-    <p role="alert" className="rounded-xl bg-destructive/10 p-3 text-sm font-semibold text-destructive">
+    <p role="alert" className="bg-destructive/10 text-destructive rounded-xl p-3 text-sm font-semibold">
       {error}
     </p>
   );
@@ -349,7 +365,7 @@ export function StationClient({
       <div className="flex flex-col gap-5">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <p className="flex items-center gap-1.5 text-xs font-extrabold tracking-wide text-muted-foreground uppercase">
+            <p className="text-muted-foreground flex items-center gap-1.5 text-xs font-extrabold tracking-wide uppercase">
               <BookOpen className="size-3.5" /> Reading time
             </p>
             <h1 className="text-2xl font-black">Your candidate brief</h1>
@@ -363,7 +379,7 @@ export function StationClient({
           ))}
         </Card>
         <Card>
-          <p className="flex items-center gap-1.5 text-xs font-extrabold tracking-wide text-muted-foreground uppercase">
+          <p className="text-muted-foreground flex items-center gap-1.5 text-xs font-extrabold tracking-wide uppercase">
             <ListChecks className="size-3.5" /> Your task
           </p>
           {station.tasks.length ? (
@@ -375,9 +391,9 @@ export function StationClient({
           ) : (
             <p className="leading-relaxed whitespace-pre-line">{station.task}</p>
           )}
-          <p className="text-sm text-muted-foreground">
-            When reading time ends, you&apos;ll have {formatClock(station.stationSeconds * 1000)} for the whole station: {station.patient.name} first, then the
-            examiner. If time runs out, the station ends and goes straight to marking.{" "}
+          <p className="text-muted-foreground text-sm">
+            When reading time ends, you&apos;ll have {formatClock(station.stationSeconds * 1000)} for the whole station:{" "}
+            {station.patient.name} first, then the examiner. If time runs out, the station ends and goes straight to marking.{" "}
             {voice.input
               ? "Hold the talk button (or the space bar) while you speak, and let go when you've finished. You can also type."
               : "Type what you'd say."}
@@ -404,7 +420,13 @@ export function StationClient({
           />
           <PhaseTimer remainingMs={remaining} label="Station" />
         </div>
-        <div ref={logRef} className="flex-1 space-y-3 overflow-y-auto rounded-2xl border bg-muted/30 p-4" role="log" aria-live="polite" aria-label="Consultation">
+        <div
+          ref={logRef}
+          className="bg-muted/30 flex-1 space-y-3 overflow-y-auto rounded-2xl border p-4"
+          role="log"
+          aria-live="polite"
+          aria-label="Consultation"
+        >
           {messages.map((m, i) => (
             <Bubble key={i} role={m.role} emotion={m.emotion}>
               {m.content}
@@ -431,9 +453,9 @@ export function StationClient({
           label="Your question to the patient"
           placeholder={voice.input ? "Or type a question…" : `Ask ${station.patient.name.split(" ")[0]} a question…`}
         />
-        {showLatency && latency && <p className="text-center text-xs text-muted-foreground">{latency}</p>}
+        {showLatency && latency && <p className="text-muted-foreground text-center text-xs">{latency}</p>}
         {voiceOn && voiceError && (
-          <p role="status" className="text-center text-sm text-muted-foreground">
+          <p role="status" className="text-muted-foreground text-center text-sm">
             {station.patient.name.split(" ")[0]}&apos;s voice isn&apos;t working right now, so replies are text only.{" "}
             <span className="opacity-70">({voiceError})</span>
           </p>
@@ -491,8 +513,18 @@ export function StationClient({
           <PhaseTimer remainingMs={remaining} label="Station" />
         </div>
         <StructureHint compact />
-        <div ref={logRef} className="flex-1 space-y-3 overflow-y-auto rounded-2xl border bg-muted/30 p-4" role="log" aria-live="polite" aria-label="Presentation so far">
-          {segments.length === 0 && <p className="text-center text-sm text-muted-foreground">Present in your own words. The examiner listens without interrupting.</p>}
+        <div
+          ref={logRef}
+          className="bg-muted/30 flex-1 space-y-3 overflow-y-auto rounded-2xl border p-4"
+          role="log"
+          aria-live="polite"
+          aria-label="Presentation so far"
+        >
+          {segments.length === 0 && (
+            <p className="text-muted-foreground text-center text-sm">
+              Present in your own words. The examiner listens without interrupting.
+            </p>
+          )}
           {segments.map((s, i) => (
             <Bubble key={i} role="student">
               {s}
@@ -527,9 +559,7 @@ export function StationClient({
           <PhaseTimer remainingMs={remaining} label="Station" />
         </div>
         <Card className="border-brand-purple/30">
-          <p className="text-xs font-extrabold tracking-wide text-brand-purple uppercase">
-            Examiner · question {asked}
-          </p>
+          <p className="text-brand-purple text-xs font-extrabold tracking-wide uppercase">Examiner · question {asked}</p>
           <p className="text-xl leading-relaxed font-bold" aria-live="polite">
             {current?.text ?? "Thank you. That's the end of the station."}
           </p>
@@ -561,11 +591,11 @@ export function StationClient({
   if (status === "assessing") {
     return (
       <Card className="items-center py-12 text-center">
-        <Loader2 className="size-10 animate-spin text-brand-purple motion-reduce:animate-none" aria-hidden />
+        <Loader2 className="text-brand-purple size-10 animate-spin motion-reduce:animate-none" aria-hidden />
         <CardTitle className="text-2xl">{timedOut ? "Time's up!" : "The examiner is writing your report…"}</CardTitle>
         <CardDescription>
-          {timedOut ? "The examiner is marking what you completed. " : ""}Marking every rubric item against your transcript. This usually takes
-          under a minute.
+          {timedOut ? "The examiner is marking what you completed. " : ""}Marking every rubric item against your transcript. This usually
+          takes under a minute.
         </CardDescription>
       </Card>
     );
@@ -614,7 +644,7 @@ function MediaFigure({ media }: { media: Media }) {
         {/* eslint-disable-next-line @next/next/no-img-element -- signed storage URLs, not optimisable */}
         <img src={media.url} alt={media.alt} className="max-h-[50dvh] w-full rounded-xl border bg-white object-contain" />
       </a>
-      {media.caption && <figcaption className="text-sm text-muted-foreground">{media.caption}</figcaption>}
+      {media.caption && <figcaption className="text-muted-foreground text-sm">{media.caption}</figcaption>}
     </figure>
   );
 }
@@ -622,9 +652,9 @@ function MediaFigure({ media }: { media: Media }) {
 function StructureHint({ compact = false }: { compact?: boolean }) {
   return (
     <div className={cn("flex flex-wrap items-center gap-1.5 text-sm", compact && "text-xs")} aria-label="Suggested structure">
-      <ClipboardList className="size-4 text-muted-foreground" aria-hidden />
+      <ClipboardList className="text-muted-foreground size-4" aria-hidden />
       {STRUCTURE.map((s) => (
-        <span key={s} className="rounded-full bg-muted px-2.5 py-0.5 font-semibold text-muted-foreground">
+        <span key={s} className="bg-muted text-muted-foreground rounded-full px-2.5 py-0.5 font-semibold">
           {s}
         </span>
       ))}
@@ -635,12 +665,12 @@ function StructureHint({ compact = false }: { compact?: boolean }) {
 function ExaminerStage({ caption }: { caption: string }) {
   return (
     <div className="flex items-center gap-3">
-      <div className="grid size-16 place-items-center rounded-full bg-brand-purple/10 text-brand-purple" aria-hidden>
+      <div className="bg-brand-purple/10 text-brand-purple grid size-16 place-items-center rounded-full" aria-hidden>
         <UserRound className="size-8" />
       </div>
       <div>
         <div className="font-extrabold">Examiner</div>
-        <div className="text-sm text-muted-foreground">{caption}</div>
+        <div className="text-muted-foreground text-sm">{caption}</div>
       </div>
     </div>
   );
@@ -670,7 +700,7 @@ function Bubble({ role, emotion, children }: { role: Msg["role"]; emotion?: stri
           {faceFor(emotion).emoji}
         </span>
       )}
-      <div className={cn("max-w-[85%] rounded-2xl px-3.5 py-2 leading-relaxed", student ? "bg-brand-purple text-white" : "border bg-card")}>
+      <div className={cn("max-w-[85%] rounded-2xl px-3.5 py-2 leading-relaxed", student ? "bg-brand-purple text-white" : "bg-card border")}>
         <span className="sr-only">{student ? "You: " : "Patient: "}</span>
         {children}
       </div>

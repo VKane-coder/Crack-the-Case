@@ -57,9 +57,12 @@ describe("speech buffer", () => {
 
   it("releases a long opening clause early, then whole sentences", () => {
     const s = new SpeechBuffer();
-    const out = ["[emotion:embarrassed] It's been going on for about three months,", " I suppose, and", " it's getting worse, really. Then", " more."].flatMap((d) =>
-      s.push(d),
-    );
+    const out = [
+      "[emotion:embarrassed] It's been going on for about three months,",
+      " I suppose, and",
+      " it's getting worse, really. Then",
+      " more.",
+    ].flatMap((d) => s.push(d));
     out.push(...s.flush());
     expect(out).toEqual([
       { type: "emotion", emotion: "embarrassed" },
@@ -110,7 +113,10 @@ describe("readFinalMessage", () => {
   const base = { model: "claude-sonnet-5-5", usage: { input_tokens: 10, output_tokens: 5, cache_read_input_tokens: 100 } };
   const tool = (input: unknown) => ({ type: "tool_use", name: MARK_DISCLOSED_TOOL, input });
   it("keeps known fact ids only, de-duplicated", () => {
-    const r = readFinalMessage({ ...base, stop_reason: "tool_use", content: [{ type: "text" }, tool({ fact_ids: ["a", "a", "zzz"] })] }, ["a", "b"]);
+    const r = readFinalMessage({ ...base, stop_reason: "tool_use", content: [{ type: "text" }, tool({ fact_ids: ["a", "a", "zzz"] })] }, [
+      "a",
+      "b",
+    ]);
     expect(r).toMatchObject({ factIds: ["a"], refused: false, usage: { cacheReadTokens: 100 } });
   });
   it("distrusts tool input on max_tokens and ignores it on refusal", () => {

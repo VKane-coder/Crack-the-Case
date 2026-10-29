@@ -16,20 +16,20 @@ npm install
 npm run dev                  # http://localhost:3000, design preview at /hub
 ```
 
-| Script | What it does |
-|---|---|
-| `npm run dev` | Dev server |
-| `npm run build` | Production build |
-| `npm run lint` | ESLint, including the patient/examiner agent isolation rule |
-| `npm run typecheck` | `tsc --noEmit` |
-| `npm test` | Vitest unit tests |
-| `npm run seed:build` | Regenerate `supabase/seed/05_levels.sql` and `10_cases.sql` from `content/` and the level maths |
-| `npm run test:e2e` | Playwright end-to-end tests against a real Supabase project (needs the env below) |
-| `npm run supabase:admin -- <status\|migrate\|seed\|auth-config> [--dry-run]` | Apply migrations, seed and auth settings to the hosted project via the Management API |
-| `npm run db:test` | Apply migrations + seed to a throwaway Postgres and run the RLS/integrity tests (`tests/db`) |
-| `npm run voices:list` | List the ElevenLabs voices on your account (Australian accents first) to fill in `ELEVENLABS_VOICE_MAP` |
-| `npm run eval:examiner` | Calibration eval: scripted good and poor GP-case performances must score ≥ 75 and ≤ 50 (needs `ANTHROPIC_API_KEY`, one Opus call each) |
-| `npm run eval:patient` | Adversarial leak eval against the real patient agent (needs `ANTHROPIC_API_KEY`, costs a few cents) |
+| Script                                                                       | What it does                                                                                                                           |
+| ---------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `npm run dev`                                                                | Dev server                                                                                                                             |
+| `npm run build`                                                              | Production build                                                                                                                       |
+| `npm run lint`                                                               | ESLint, including the patient/examiner agent isolation rule                                                                            |
+| `npm run typecheck`                                                          | `tsc --noEmit`                                                                                                                         |
+| `npm test`                                                                   | Vitest unit tests                                                                                                                      |
+| `npm run seed:build`                                                         | Regenerate `supabase/seed/05_levels.sql` and `10_cases.sql` from `content/` and the level maths                                        |
+| `npm run test:e2e`                                                           | Playwright end-to-end tests against a real Supabase project (needs the env below)                                                      |
+| `npm run supabase:admin -- <status\|migrate\|seed\|auth-config> [--dry-run]` | Apply migrations, seed and auth settings to the hosted project via the Management API                                                  |
+| `npm run db:test`                                                            | Apply migrations + seed to a throwaway Postgres and run the RLS/integrity tests (`tests/db`)                                           |
+| `npm run voices:list`                                                        | List the ElevenLabs voices on your account (Australian accents first) to fill in `ELEVENLABS_VOICE_MAP`                                |
+| `npm run eval:examiner`                                                      | Calibration eval: scripted good and poor GP-case performances must score ≥ 75 and ≤ 50 (needs `ANTHROPIC_API_KEY`, one Opus call each) |
+| `npm run eval:patient`                                                       | Adversarial leak eval against the real patient agent (needs `ANTHROPIC_API_KEY`, costs a few cents)                                    |
 
 ## Database
 

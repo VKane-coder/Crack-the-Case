@@ -44,7 +44,10 @@ export async function listCases(db: SupabaseClient, userId: string, f: CaseFilte
 
   const from = (f.page - 1) * PAGE_SIZE;
   const [page, specialties] = await Promise.all([
-    query.order("difficulty").order("title").range(from, from + PAGE_SIZE - 1),
+    query
+      .order("difficulty")
+      .order("title")
+      .range(from, from + PAGE_SIZE - 1),
     db.from("v_case_catalog").select("specialty_slug, specialty_name").order("specialty_name"),
   ]);
   // Asking for a page past the end is a PostgREST range error; treat it as an empty page.
@@ -52,7 +55,10 @@ export async function listCases(db: SupabaseClient, userId: string, f: CaseFilte
   if (specialties.error) throw specialties.error;
 
   const cases = (page.data ?? []) as CatalogCase[];
-  const progress = await caseProgress(userId, cases.map((c) => c.id));
+  const progress = await caseProgress(
+    userId,
+    cases.map((c) => c.id),
+  );
   const total = page.count ?? 0;
   const seen = new Map<string, string>();
   for (const s of specialties.data ?? []) seen.set(s.specialty_slug, s.specialty_name);
