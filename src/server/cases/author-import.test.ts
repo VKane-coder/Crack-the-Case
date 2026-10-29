@@ -19,7 +19,9 @@ const row: AuthorRow = {
     introduction_identifying_details: { occupation: qa("What is your occupation?", "Retired factory worker") },
   }),
   "Voice ID": "twLPF55UcxNYRmxaWLAn",
-  "Pre Reading Material": JSON.stringify({ prereading: "You are a General Practitioner. Mark Whitney is a 63-year-old male who presents with blood in his urine." }),
+  "Pre Reading Material": JSON.stringify({
+    prereading: "You are a General Practitioner. Mark Whitney is a 63-year-old male who presents with blood in his urine.",
+  }),
   "Assessment Instructions": JSON.stringify({
     tasks: ["Take a history from Mark. (5 minutes)", "Answer two questions. (3 minutes)"],
     assessment_task: "You will have 8 minutes to perform the following:",
@@ -30,7 +32,10 @@ const row: AuthorRow = {
         allergies: { marks: 0.5, ...qa("Do you have any allergies?", "No") },
         social_history: { marks: 2, questions: [qa("Do you smoke?", "Yes")] },
         opening_statement: { marks: 0, ...qa("What's brought you in today?", "Red pee") },
-        associated: { mark_allocation: 4, marking_scheme: { "1_mark": "Asked about one system.", "4_marks": "Asked about three systems." } },
+        associated: {
+          mark_allocation: 4,
+          marking_scheme: { "1_mark": "Asked about one system.", "4_marks": "Asked about three systems." },
+        },
       },
     },
     task_2: {
@@ -42,7 +47,9 @@ const row: AuthorRow = {
         ],
       },
     },
-    task_3: { ecg: { marks: 1, question: "Interpret this urine microscopy.", image: "renal/microscopy.png", answer: "Red cells, no casts" } },
+    task_3: {
+      ecg: { marks: 1, question: "Interpret this urine microscopy.", image: "renal/microscopy.png", answer: "Red cells, no casts" },
+    },
   }),
   Avatar: "Mark Whitney.png",
 };
@@ -61,9 +68,18 @@ describe("author case import", () => {
 
   it("turns question/answer pairs into the patient's script, once each", () => {
     const p = c.content!.patient;
-    expect(p).toMatchObject({ name: "Mark Whitney", age: 63, sex: "male", occupation: "Retired factory worker", opening_statement: "My pee has been red for a while now." });
+    expect(p).toMatchObject({
+      name: "Mark Whitney",
+      age: 63,
+      sex: "male",
+      occupation: "Retired factory worker",
+      opening_statement: "My pee has been red for a while now.",
+    });
     expect(p.facts.filter((f) => f.prompt === "Do you smoke?")).toHaveLength(1);
-    expect(p.facts.find((f) => f.prompt === "What medications do you take?")).toMatchObject({ category: "DH", content: "Pantoprazole; Ramipril" });
+    expect(p.facts.find((f) => f.prompt === "What medications do you take?")).toMatchObject({
+      category: "DH",
+      content: "Pantoprazole; Ramipril",
+    });
     expect(p.facts.find((f) => f.prompt === "Do you have any allergies?")!.content).toBe("No.");
     expect(p.facts.find((f) => f.prompt === "When did it start?")!.disclosure).toBe("on_open_question");
   });
@@ -85,7 +101,11 @@ describe("author case import", () => {
     const [ddx, image] = c.content!.examiner_items;
     expect(ddx).toMatchObject({ key: "top_differentials", prompt: "What are your top 2 differential diagnoses, and why?" });
     expect(ddx.model_answer[0]).toBe("Bladder cancer (Painless haematuria; Smoker)");
-    expect(image).toMatchObject({ prompt: "Interpret this urine microscopy.", media: { path: "renal/microscopy.png" }, model_answer: ["Answer: Red cells, no casts"] });
+    expect(image).toMatchObject({
+      prompt: "Interpret this urine microscopy.",
+      media: { path: "renal/microscopy.png" },
+      model_answer: ["Answer: Red cells, no casts"],
+    });
     expect(c.content!.clinical.diagnosis).toBe("Bladder cancer");
   });
 
@@ -93,8 +113,11 @@ describe("author case import", () => {
     const bare = convertAuthorCase(
       {
         ...row,
-        "Assessment Instructions": "You will have 8 minutes to perform the following:\n 1. Take a history (6 minutes).\n 2. Answer the examiner's questions (2 minutes).",
-        "Marking Rubric": JSON.stringify({ marking_rubric: { allergies: { mark_allocation: 1, questions_and_answers: [qa("Allergies?", "No")] } } }),
+        "Assessment Instructions":
+          "You will have 8 minutes to perform the following:\n 1. Take a history (6 minutes).\n 2. Answer the examiner's questions (2 minutes).",
+        "Marking Rubric": JSON.stringify({
+          marking_rubric: { allergies: { mark_allocation: 1, questions_and_answers: [qa("Allergies?", "No")] } },
+        }),
       },
       SPECIALTIES,
     );
@@ -105,7 +128,13 @@ describe("author case import", () => {
 
   it("refuses a case whose patient would give away the diagnosis", () => {
     const leaky = convertAuthorCase(
-      { ...row, "patient.profile": JSON.stringify({ ...JSON.parse(row["patient.profile"] as string), worry: [qa("What worries you?", "That it's bladder cancer.")] }) },
+      {
+        ...row,
+        "patient.profile": JSON.stringify({
+          ...JSON.parse(row["patient.profile"] as string),
+          worry: [qa("What worries you?", "That it's bladder cancer.")],
+        }),
+      },
       SPECIALTIES,
     );
     expect(leaky.content).toBeNull();

@@ -29,7 +29,7 @@ export function BadgeMedal({
           locked ? "from-muted to-muted grayscale" : tierRing[tier],
         )}
       >
-        <div className="grid size-full place-items-center rounded-full bg-card">
+        <div className="bg-card grid size-full place-items-center rounded-full">
           <Icon className={cn("size-7", locked ? "text-muted-foreground" : "text-foreground")} />
         </div>
       </div>

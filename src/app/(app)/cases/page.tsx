@@ -25,7 +25,9 @@ export default async function CasesPage({ searchParams }: PageProps<"/cases">) {
       <div>
         <h1 className="text-2xl font-black sm:text-3xl">Case library</h1>
         <p className="text-muted-foreground" aria-live="polite">
-          {filtered ? `${total} case${total === 1 ? "" : "s"} match your filters.` : `${total} case${total === 1 ? "" : "s"} ready to crack.`}
+          {filtered
+            ? `${total} case${total === 1 ? "" : "s"} match your filters.`
+            : `${total} case${total === 1 ? "" : "s"} ready to crack.`}
         </p>
       </div>
 
@@ -39,7 +41,7 @@ export default async function CasesPage({ searchParams }: PageProps<"/cases">) {
         </div>
       ) : (
         <Card className="items-center py-10 text-center">
-          <SearchX className="size-8 text-muted-foreground" />
+          <SearchX className="text-muted-foreground size-8" />
           <p className="font-bold">{filtered ? "No cases match those filters." : "No cases yet. Check back soon."}</p>
           {filtered && (
             <Button asChild variant="outline">
@@ -60,7 +62,7 @@ export default async function CasesPage({ searchParams }: PageProps<"/cases">) {
           ) : (
             <span />
           )}
-          <span className="text-sm font-semibold text-muted-foreground">
+          <span className="text-muted-foreground text-sm font-semibold">
             Page {Math.min(page, pageCount)} of {pageCount}
           </span>
           {page < pageCount ? (

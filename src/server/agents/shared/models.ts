@@ -34,7 +34,6 @@ export function costUsd(model: string, u: TokenUsage): number {
   const p = PRICES[model];
   if (!p) return 0;
   const usd =
-    (u.inputTokens * p.input + u.outputTokens * p.output + u.cacheReadTokens * p.cacheRead + u.cacheWriteTokens * p.cacheWrite) /
-    1_000_000;
+    (u.inputTokens * p.input + u.outputTokens * p.output + u.cacheReadTokens * p.cacheRead + u.cacheWriteTokens * p.cacheWrite) / 1_000_000;
   return Math.round(usd * 1e6) / 1e6;
 }

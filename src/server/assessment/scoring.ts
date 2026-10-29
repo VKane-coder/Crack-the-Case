@@ -71,7 +71,11 @@ export function pointsFor(max: number, outcome: Outcome, suggested?: number): nu
  * some disclosed it becomes "partial"; with none it becomes "not met". Items without linked facts
  * (communication, reasoning) are left to the assessor's judgement.
  */
-export function checkAgainstDisclosures(item: ScoringItem, outcome: Outcome, disclosed: Set<string>): { outcome: Outcome; adjustment?: string } {
+export function checkAgainstDisclosures(
+  item: ScoringItem,
+  outcome: Outcome,
+  disclosed: Set<string>,
+): { outcome: Outcome; adjustment?: string } {
   if (!item.linked_fact_ids.length || outcome === "not_met") return { outcome };
   const found = item.linked_fact_ids.filter((id) => disclosed.has(id)).length;
   if (found === 0) return { outcome: "not_met", adjustment: "The patient never revealed the information this item needs." };

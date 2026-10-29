@@ -22,12 +22,7 @@ export const MAX_TURNS_PER_PHASE = 60;
 
 const LIVE = ["created", "briefing", "history", "history_ended", "presentation", "examiner_questions"] as const;
 
-export type ConsultationStatus =
-  | (typeof LIVE)[number]
-  | "assessing"
-  | "completed"
-  | "assessment_failed"
-  | "abandoned";
+export type ConsultationStatus = (typeof LIVE)[number] | "assessing" | "completed" | "assessment_failed" | "abandoned";
 
 export class StationError extends Error {
   constructor(
@@ -67,7 +62,9 @@ export type Db = SupabaseClient;
 export async function loadOwned(db: Db, userId: string, id: string): Promise<Consultation> {
   const { data, error } = await db
     .from("consultations")
-    .select("id, user_id, case_version_id, status, station_config, history_started_at, phase_deadline_at, station_deadline_at, disclosed_fact_ids")
+    .select(
+      "id, user_id, case_version_id, status, station_config, history_started_at, phase_deadline_at, station_deadline_at, disclosed_fact_ids",
+    )
     .eq("id", id)
     .eq("user_id", userId)
     .maybeSingle();
@@ -142,7 +139,8 @@ export async function startConsultation(userId: string, caseSlug: string): Promi
   if (!c?.current_version_id || !version?.published_at) throw new StationError("not_found", "That case isn't available.");
 
   const { data: profile } = await db.from("profiles").select("organization_id").eq("id", userId).single();
-  if (c.organization_id && c.organization_id !== profile?.organization_id) throw new StationError("not_found", "That case isn't available.");
+  if (c.organization_id && c.organization_id !== profile?.organization_id)
+    throw new StationError("not_found", "That case isn't available.");
 
   const { data: live } = await db.from("consultations").select("id, status").eq("user_id", userId).in("status", LIVE);
   for (const s of live ?? []) {
@@ -204,12 +202,16 @@ export async function endHistory(userId: string, id: string) {
 async function compileTranscript(db: Db, id: string) {
   const messages = await historyMessages(db, id);
   const text = messages.map((m) => `${m.role === "student" ? "Student" : "Patient"}: ${m.content}`).join("\n");
-  const { error } = await db
-    .from("transcripts")
-    .upsert(
-      { consultation_id: id, kind: "history", text, word_count: text.split(/\s+/).filter(Boolean).length, compiled_at: new Date().toISOString() },
-      { onConflict: "consultation_id,kind" },
-    );
+  const { error } = await db.from("transcripts").upsert(
+    {
+      consultation_id: id,
+      kind: "history",
+      text,
+      word_count: text.split(/\s+/).filter(Boolean).length,
+      compiled_at: new Date().toISOString(),
+    },
+    { onConflict: "consultation_id,kind" },
+  );
   if (error) throw error;
 }
 
@@ -236,7 +238,13 @@ export async function insertMessage(
 ): Promise<number> {
   // seq is unique per consultation; on a collision with a concurrent insert, take the next one.
   for (let tries = 0; tries < 5; tries++) {
-    const { data: last } = await db.from("messages").select("seq").eq("consultation_id", id).order("seq", { ascending: false }).limit(1).maybeSingle();
+    const { data: last } = await db
+      .from("messages")
+      .select("seq")
+      .eq("consultation_id", id)
+      .order("seq", { ascending: false })
+      .limit(1)
+      .maybeSingle();
     const seq = (last?.seq ?? -1) + 1;
     const { error } = await db.from("messages").insert({
       consultation_id: id,
@@ -249,7 +257,8 @@ export async function insertMessage(
     });
     if (!error) return seq;
     if (error.code !== "23505") throw error;
-    if (error.message.includes("messages_student_idempotency")) throw new StationError("turn_in_progress", "That message was already sent.");
+    if (error.message.includes("messages_student_idempotency"))
+      throw new StationError("turn_in_progress", "That message was already sent.");
   }
   throw new StationError("turn_in_progress", "Too many concurrent messages.");
 }
@@ -258,7 +267,9 @@ export async function insertMessage(
 export async function loadStation(userId: string, id: string, userDb: Db) {
   const { data: station, error } = await userDb
     .from("consultations")
-    .select("id, status, case_version_id, station_config, started_at, history_started_at, history_ended_at, phase_deadline_at, station_deadline_at")
+    .select(
+      "id, status, case_version_id, station_config, started_at, history_started_at, history_ended_at, phase_deadline_at, station_deadline_at",
+    )
     .eq("id", id)
     .eq("user_id", userId)
     .maybeSingle();
@@ -291,7 +302,8 @@ export async function loadStation(userId: string, id: string, userDb: Db) {
       .maybeSingle();
     const url = row?.media_path ? await signedMediaUrl(admin, row.media_path) : null;
     const item = content.examiner_items?.find((i) => i.key === row?.item_key);
-    if (url) currentMedia = { ord: current.ord, url, alt: item?.media?.alt ?? "Image for this question", caption: item?.media?.caption ?? null };
+    if (url)
+      currentMedia = { ord: current.ord, url, alt: item?.media?.alt ?? "Image for this question", caption: item?.media?.caption ?? null };
   }
   const media = currentMedia as { ord: number; url: string; alt: string; caption: string | null } | null;
   const startedAt = station.started_at as string | null;
@@ -470,7 +482,8 @@ export async function patientTurn(
     );
     if (error) console.error("ai_calls insert failed", { code: error.code });
   }
-  if (result.outcome !== "ok") console.warn("patient turn", { consultation: id, outcome: result.outcome, guardrail: result.guardrail?.reason });
+  if (result.outcome !== "ok")
+    console.warn("patient turn", { consultation: id, outcome: result.outcome, guardrail: result.guardrail?.reason });
 
   await tts?.finish();
   const usage = [];
@@ -479,7 +492,12 @@ export async function patientTurn(
     usage.push({ provider: "deepgram", units: sttSeconds, unit: "seconds", cost_usd: round6((sttSeconds / 60) * sttUsdPerMinute()) });
   }
   if (tts && tts.characters > 0 && !voiceFake()) {
-    usage.push({ provider: "elevenlabs", units: tts.characters, unit: "characters", cost_usd: round6((tts.characters / 1000) * ttsUsdPer1kChars()) });
+    usage.push({
+      provider: "elevenlabs",
+      units: tts.characters,
+      unit: "characters",
+      cost_usd: round6((tts.characters / 1000) * ttsUsdPer1kChars()),
+    });
   }
   if (usage.length) {
     const { error } = await db.from("voice_usage").insert(usage.map((u) => ({ ...u, consultation_id: id, user_id: userId })));

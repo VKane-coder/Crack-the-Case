@@ -20,7 +20,8 @@ export function errorBody(code: string, message: string, retryable = false) {
 }
 
 export function stationErrorResponse(err: unknown) {
-  if (err instanceof StationError) return NextResponse.json(errorBody(err.code, err.message, err.code === "unavailable"), { status: STATUS[err.code] });
+  if (err instanceof StationError)
+    return NextResponse.json(errorBody(err.code, err.message, err.code === "unavailable"), { status: STATUS[err.code] });
   console.error("station request failed", err);
   return NextResponse.json(errorBody("server_error", "Something went wrong on our side. Please try again.", true), { status: 500 });
 }

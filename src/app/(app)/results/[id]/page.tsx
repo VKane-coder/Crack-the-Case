@@ -44,11 +44,7 @@ export default async function ResultsPage({ params }: PageProps<"/results/[id]">
 
   return (
     <div className="flex flex-col gap-5">
-      <Celebration
-        xp={xp}
-        title={r.passed ? "Case cracked!" : "Station complete"}
-        subtitle={`${result.title} · ${result.patientName}`}
-      >
+      <Celebration xp={xp} title={r.passed ? "Case cracked!" : "Station complete"} subtitle={`${result.title} · ${result.patientName}`}>
         <div className="flex flex-wrap items-center justify-center gap-2">
           <span className="text-4xl font-black tabular-nums">{Math.round(r.overall)}%</span>
           <Badge variant={rating.variant}>{rating.label}</Badge>
@@ -58,7 +54,7 @@ export default async function ResultsPage({ params }: PageProps<"/results/[id]">
 
       <Card>
         <CardTitle className="flex items-center gap-2">
-          <Quote className="size-5 text-brand-purple" /> Examiner&apos;s comment
+          <Quote className="text-brand-purple size-5" /> Examiner&apos;s comment
         </CardTitle>
         <p className="text-lg leading-relaxed">{r.comment}</p>
       </Card>
@@ -85,16 +81,26 @@ export default async function ResultsPage({ params }: PageProps<"/results/[id]">
       </Card>
 
       <div className="grid gap-4 md:grid-cols-2">
-        <ListCard title="What went well" icon={<ThumbsUp className="size-5 text-brand-teal" />} items={r.strengths} />
-        <ListCard title="Next time" icon={<Lightbulb className="size-5 text-brand-purple" />} items={r.improvements} />
-        <ListCard title="Red flags you missed" icon={<AlertTriangle className="size-5 text-brand-coral" />} items={r.missedRedFlags} empty="None. Nice work." />
-        <ListCard title="Questions to add" icon={<CircleDashed className="size-5 text-muted-foreground" />} items={r.missedQuestions} empty="Nothing major missed." />
+        <ListCard title="What went well" icon={<ThumbsUp className="text-brand-teal size-5" />} items={r.strengths} />
+        <ListCard title="Next time" icon={<Lightbulb className="text-brand-purple size-5" />} items={r.improvements} />
+        <ListCard
+          title="Red flags you missed"
+          icon={<AlertTriangle className="text-brand-coral size-5" />}
+          items={r.missedRedFlags}
+          empty="None. Nice work."
+        />
+        <ListCard
+          title="Questions to add"
+          icon={<CircleDashed className="text-muted-foreground size-5" />}
+          items={r.missedQuestions}
+          empty="Nothing major missed."
+        />
       </div>
 
       {r.revisionTopics.length > 0 && (
         <Card>
           <CardTitle className="flex items-center gap-2">
-            <BookMarked className="size-5 text-brand-blue" /> Revise
+            <BookMarked className="text-brand-blue size-5" /> Revise
           </CardTitle>
           <div className="flex flex-wrap gap-2">
             {r.revisionTopics.map((t) => (
@@ -165,7 +171,7 @@ function ListCard({ title, icon, items, empty }: { title: string; icon: React.Re
           ))}
         </ul>
       ) : (
-        <p className="text-sm text-muted-foreground">{empty ?? "Nothing to add."}</p>
+        <p className="text-muted-foreground text-sm">{empty ?? "Nothing to add."}</p>
       )}
     </Card>
   );
@@ -179,7 +185,11 @@ function ItemRow({ item }: { item: Report["items"][number] }) {
       <span
         className={cn(
           "mt-0.5 grid size-6 shrink-0 place-items-center rounded-full",
-          item.outcome === "met" ? "bg-brand-teal/15 text-brand-teal" : item.outcome === "partial" ? "bg-brand-purple/15 text-brand-purple" : "bg-brand-coral/15 text-brand-coral",
+          item.outcome === "met"
+            ? "bg-brand-teal/15 text-brand-teal"
+            : item.outcome === "partial"
+              ? "bg-brand-purple/15 text-brand-purple"
+              : "bg-brand-coral/15 text-brand-coral",
         )}
         title={label}
       >
@@ -200,7 +210,7 @@ function ItemRow({ item }: { item: Report["items"][number] }) {
             {item.points} / {item.max}
           </span>
         </div>
-        {item.evidence && <p className="mt-1 text-sm text-muted-foreground italic">&ldquo;{item.evidence}&rdquo;</p>}
+        {item.evidence && <p className="text-muted-foreground mt-1 text-sm italic">&ldquo;{item.evidence}&rdquo;</p>}
       </div>
     </li>
   );
@@ -216,7 +226,8 @@ function Reveal({ reveal }: { reveal: Report["reveal"] }) {
       <Section title="Differentials">
         {reveal.differentials.map((d) => (
           <li key={d.dx}>
-            <span className="font-semibold">{d.dx}</span> <span className="text-muted-foreground">({d.likelihood.replace("_", " ")})</span>: {d.discriminating_features}
+            <span className="font-semibold">{d.dx}</span> <span className="text-muted-foreground">({d.likelihood.replace("_", " ")})</span>:{" "}
+            {d.discriminating_features}
           </li>
         ))}
       </Section>
@@ -227,13 +238,30 @@ function Reveal({ reveal }: { reveal: Report["reveal"] }) {
           </li>
         ))}
       </Section>
-      <Section title="Investigations">{reveal.investigations.map((t) => <li key={t}>{t}</li>)}</Section>
-      <Section title="Management">{reveal.management.map((t) => <li key={t}>{t}</li>)}</Section>
-      {reveal.safetyNetting.length > 0 && <Section title="Safety-netting">{reveal.safetyNetting.map((t) => <li key={t}>{t}</li>)}</Section>}
-      <Section title="Learning objectives">{reveal.objectives.map((t) => <li key={t}>{t}</li>)}</Section>
-      <p className="text-xs text-muted-foreground">
-        References: {reveal.references.join("; ")}.
-        {reveal.pendingReview && " This case is awaiting review by an Australian clinician."}
+      <Section title="Investigations">
+        {reveal.investigations.map((t) => (
+          <li key={t}>{t}</li>
+        ))}
+      </Section>
+      <Section title="Management">
+        {reveal.management.map((t) => (
+          <li key={t}>{t}</li>
+        ))}
+      </Section>
+      {reveal.safetyNetting.length > 0 && (
+        <Section title="Safety-netting">
+          {reveal.safetyNetting.map((t) => (
+            <li key={t}>{t}</li>
+          ))}
+        </Section>
+      )}
+      <Section title="Learning objectives">
+        {reveal.objectives.map((t) => (
+          <li key={t}>{t}</li>
+        ))}
+      </Section>
+      <p className="text-muted-foreground text-xs">
+        References: {reveal.references.join("; ")}.{reveal.pendingReview && " This case is awaiting review by an Australian clinician."}
       </p>
     </Card>
   );

@@ -38,8 +38,8 @@ export function PatientStage({
     <div className="flex items-center gap-3">
       <div
         className={cn(
-          "relative grid size-16 place-items-center rounded-full bg-muted text-4xl transition-shadow motion-reduce:transition-none",
-          speaking && "ring-4 ring-brand-teal/40 motion-safe:animate-pulse",
+          "bg-muted relative grid size-16 place-items-center rounded-full text-4xl transition-shadow motion-reduce:transition-none",
+          speaking && "ring-brand-teal/40 ring-4 motion-safe:animate-pulse",
         )}
         role="img"
         aria-label={`${name} looks ${face.label}`}
@@ -48,7 +48,9 @@ export function PatientStage({
           <>
             {/* eslint-disable-next-line @next/next/no-img-element -- signed storage URLs, not optimisable */}
             <img src={avatarUrl} alt="" className="size-16 rounded-full object-cover" />
-            <span className="absolute -right-1 -bottom-1 grid size-7 place-items-center rounded-full bg-card text-lg shadow">{face.emoji}</span>
+            <span className="bg-card absolute -right-1 -bottom-1 grid size-7 place-items-center rounded-full text-lg shadow">
+              {face.emoji}
+            </span>
           </>
         ) : (
           face.emoji
@@ -56,7 +58,7 @@ export function PatientStage({
       </div>
       <div>
         <div className="font-extrabold">{name}</div>
-        <div className="text-sm text-muted-foreground">
+        <div className="text-muted-foreground text-sm">
           {age} · {speaking ? "speaking…" : "listening"}
         </div>
       </div>

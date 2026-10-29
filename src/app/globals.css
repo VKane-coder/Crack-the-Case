@@ -49,7 +49,8 @@
   --ring: var(--brand-blue);
 
   /* Surfaces */
-  --hub-gradient: radial-gradient(1200px 600px at 10% -10%, #e6edff 0%, transparent 60%),
+  --hub-gradient:
+    radial-gradient(1200px 600px at 10% -10%, #e6edff 0%, transparent 60%),
     radial-gradient(900px 500px at 100% 0%, #f1eaff 0%, transparent 55%),
     radial-gradient(800px 500px at 50% 120%, #e3fbf3 0%, transparent 60%);
 }
@@ -71,7 +72,8 @@
   --accent-foreground: #bff5e6;
   --border: #2a3055;
   --input: #2a3055;
-  --hub-gradient: radial-gradient(1200px 600px at 10% -10%, #1d2554 0%, transparent 60%),
+  --hub-gradient:
+    radial-gradient(1200px 600px at 10% -10%, #1d2554 0%, transparent 60%),
     radial-gradient(900px 500px at 100% 0%, #2a1d52 0%, transparent 55%),
     radial-gradient(800px 500px at 50% 120%, #11352f 0%, transparent 60%);
 }
