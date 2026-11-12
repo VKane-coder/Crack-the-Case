@@ -372,25 +372,7 @@ export function StationClient({
           </div>
           <PhaseTimer remainingMs={readingEnds - now} label="Reading" warnAtMs={10_000} />
         </div>
-        <Card>
-          <p className="text-lg leading-relaxed whitespace-pre-line">{station.brief}</p>
-          {station.readingMedia.map((m) => (
-            <MediaFigure key={m.url} media={m} />
-          ))}
-        </Card>
-        <Card>
-          <p className="text-muted-foreground flex items-center gap-1.5 text-xs font-extrabold tracking-wide uppercase">
-            <ListChecks className="size-3.5" /> Your task
-          </p>
-          {station.tasks.length ? (
-            <ol className="list-decimal space-y-1 pl-5 leading-relaxed">
-              {station.tasks.map((t) => (
-                <li key={t}>{t}</li>
-              ))}
-            </ol>
-          ) : (
-            <p className="leading-relaxed whitespace-pre-line">{station.task}</p>
-          )}
+        <BriefAndTask station={station}>
           <p className="text-muted-foreground text-sm">
             When reading time ends, you&apos;ll have {formatClock(station.stationSeconds * 1000)} for the whole station:{" "}
             {station.patient.name} first, then the examiner. If time runs out, the station ends and goes straight to marking.{" "}
@@ -398,7 +380,7 @@ export function StationClient({
               ? "Hold the talk button (or the space bar) while you speak, and let go when you've finished. You can also type."
               : "Type what you'd say."}
           </p>
-        </Card>
+        </BriefAndTask>
         {errorBox}
         <Button size="lg" onClick={startHistory} disabled={busy} className="self-start">
           I&apos;m ready, bring the patient in
@@ -408,6 +390,9 @@ export function StationClient({
   }
 
   if (status === "history") {
+    // Like the sheet on the door in a real OSCE: the brief and task stay in view and the patient is
+    // heard, not read. With the voice off or failing, the replies are shown so they can be read.
+    const showReplies = !voice.output || !voiceOn || voiceError !== null;
     return (
       <div className="flex h-[calc(100dvh-7.5rem)] flex-col gap-4">
         <div className="flex items-center justify-between gap-4">
@@ -420,11 +405,17 @@ export function StationClient({
           />
           <PhaseTimer remainingMs={remaining} label="Station" />
         </div>
+        {!showReplies && (
+          <div className="flex-1 space-y-4 overflow-y-auto">
+            <BriefAndTask station={station} labelled />
+          </div>
+        )}
+        {/* Hidden from view (not removed) while the voice is on: screen readers can still read the replies. */}
         <div
           ref={logRef}
-          className="bg-muted/30 flex-1 space-y-3 overflow-y-auto rounded-2xl border p-4"
+          className={showReplies ? "bg-muted/30 flex-1 space-y-3 overflow-y-auto rounded-2xl border p-4" : "sr-only"}
           role="log"
-          aria-live="polite"
+          aria-live={showReplies ? "polite" : "off"}
           aria-label="Consultation"
         >
           {messages.map((m, i) => (
@@ -705,5 +696,39 @@ function Bubble({ role, emotion, children }: { role: Msg["role"]; emotion?: stri
         {children}
       </div>
     </div>
+  );
+}
+
+/** The candidate brief and task: read during reading time, and kept in view while talking to the patient. */
+function BriefAndTask({ station, labelled = false, children }: { station: StationData; labelled?: boolean; children?: React.ReactNode }) {
+  return (
+    <>
+      <Card>
+        {labelled && (
+          <p className="text-muted-foreground flex items-center gap-1.5 text-xs font-extrabold tracking-wide uppercase">
+            <BookOpen className="size-3.5" /> Candidate brief
+          </p>
+        )}
+        <p className="text-lg leading-relaxed whitespace-pre-line">{station.brief}</p>
+        {station.readingMedia.map((m) => (
+          <MediaFigure key={m.url} media={m} />
+        ))}
+      </Card>
+      <Card>
+        <p className="text-muted-foreground flex items-center gap-1.5 text-xs font-extrabold tracking-wide uppercase">
+          <ListChecks className="size-3.5" /> Your task
+        </p>
+        {station.tasks.length ? (
+          <ol className="list-decimal space-y-1 pl-5 leading-relaxed">
+            {station.tasks.map((t) => (
+              <li key={t}>{t}</li>
+            ))}
+          </ol>
+        ) : (
+          <p className="leading-relaxed whitespace-pre-line">{station.task}</p>
+        )}
+        {children}
+      </Card>
+    </>
   );
 }
