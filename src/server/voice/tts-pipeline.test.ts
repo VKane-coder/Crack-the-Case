@@ -30,6 +30,26 @@ describe("TtsPipeline", () => {
     expect(p.characters).toBe(13);
   });
 
+  it("voices at most two sentences at once, starting them in order", async () => {
+    let inFlight = 0;
+    let peak = 0;
+    const started: string[] = [];
+    const synth: Synthesize = async (text) => {
+      started.push(text);
+      peak = Math.max(peak, ++inFlight);
+      await new Promise((r) => setTimeout(r, 10));
+      inFlight--;
+      return { data: new TextEncoder().encode(text), mime: "audio/mpeg" };
+    };
+    const out: AudioEvent[] = [];
+    const p = new TtsPipeline(synth, (e) => out.push(e));
+    for (const s of ["One.", "Two.", "Three.", "Four.", "Five."]) p.push(s, "neutral");
+    await p.finish();
+    expect(peak).toBe(2);
+    expect(started).toEqual(["One.", "Two.", "Three.", "Four.", "Five."]);
+    expect(out.map(decode)).toEqual(["One.", "Two.", "Three.", "Four.", "Five."]);
+  });
+
   it("drops withdrawn sentences on reset and keeps going with new ones", async () => {
     const out: AudioEvent[] = [];
     const p = new TtsPipeline(slowEcho({ "Leaky.": 30 }), (e) => out.push(e));
