@@ -17,8 +17,16 @@ export function voiceErrorCode(err: unknown) {
   return (err as { voiceCode?: string } | null)?.voiceCode ?? "tts_failed";
 }
 
+/**
+ * Sentences voiced at once. ElevenLabs caps simultaneous requests per account (lower on smaller
+ * plans) and refuses the rest; two keeps the next sentence ready without hitting the cap.
+ */
+export const MAX_CONCURRENT_SYNTHESIS = 2;
+
 export class TtsPipeline {
   private chain: Promise<void> = Promise.resolve();
+  private active = 0;
+  private waiting: (() => void)[] = [];
   private ctrl = new AbortController();
   private index = 0;
   private spoken: string[] = [];
@@ -31,7 +39,20 @@ export class TtsPipeline {
     private readonly emit: (e: AudioEvent) => void,
     /** Called once, on the first failure, so the student learns why the patient is silent. */
     private readonly onFirstFailure?: (code: string) => void,
+    private readonly maxConcurrent = MAX_CONCURRENT_SYNTHESIS,
   ) {}
+
+  /** Runs a synthesis once fewer than maxConcurrent are in flight; sentences start in the order pushed. */
+  private async slot<T>(run: () => Promise<T>): Promise<T> {
+    if (this.active >= this.maxConcurrent) await new Promise<void>((resume) => this.waiting.push(resume));
+    this.active++;
+    try {
+      return await run();
+    } finally {
+      this.active--;
+      this.waiting.shift()?.();
+    }
+  }
 
   push(text: string, emotion: Emotion) {
     const signal = this.ctrl.signal;
@@ -39,8 +60,10 @@ export class TtsPipeline {
     const previousText = this.spoken.slice(-2).join(" ");
     this.spoken.push(text);
     this.characters += text.length;
-    // Start now; the chain only orders the emits.
-    const audio = this.synthesize(text, { emotion, previousText }, signal).catch((err) => {
+    // Start as soon as a slot is free; the chain only orders the emits.
+    const audio = this.slot(() =>
+      signal.aborted ? Promise.reject(new Error("withdrawn")) : this.synthesize(text, { emotion, previousText }, signal),
+    ).catch((err) => {
       if (!signal.aborted) {
         if (this.failures++ === 0) this.onFirstFailure?.(voiceErrorCode(err));
         console.warn("tts failed", { code: voiceErrorCode(err), message: err instanceof Error ? err.message : String(err) });

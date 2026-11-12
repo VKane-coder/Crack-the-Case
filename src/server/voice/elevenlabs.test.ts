@@ -3,6 +3,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 // The ElevenLabs SDK is replaced with a stub: `refuse` lists voice ids it rejects, and each call is recorded.
 const sdk = vi.hoisted(() => ({
   refuse: new Map<string, { statusCode: number; body: unknown }>(),
+  /** Times each voice id answers "busy" (409 already_running) before it speaks. */
+  busy: new Map<string, number>(),
   spoken: [] as string[],
   searches: 0,
   voices: [
@@ -25,6 +27,11 @@ vi.mock("@elevenlabs/elevenlabs-js", () => ({
       stream: async (voiceId: string) => {
         const refusal = sdk.refuse.get(voiceId);
         if (refusal) throw Object.assign(new Error("refused"), refusal);
+        const busy = sdk.busy.get(voiceId) ?? 0;
+        if (busy > 0) {
+          sdk.busy.set(voiceId, busy - 1);
+          throw Object.assign(new Error("busy"), { statusCode: 409, body: { detail: { status: "already_running" } } });
+        }
         sdk.spoken.push(voiceId);
         return new ReadableStream({
           start(c) {
@@ -43,7 +50,7 @@ vi.mock("@elevenlabs/elevenlabs-js", () => ({
   },
 }));
 
-const { caseVoiceSynthesize, voiceRefused } = await import("./elevenlabs");
+const { caseVoiceSynthesize, voiceRefused, elevenLabsSynthesize, voiceBusy } = await import("./elevenlabs");
 
 const freePlan = { statusCode: 400, body: { detail: { status: "free_users_not_allowed" } } };
 const opts = { emotion: "neutral" as const, previousText: "" };
@@ -89,5 +96,31 @@ describe("voiceRefused", () => {
     expect(voiceRefused({ voiceStatus: 404 })).toBe(true);
     expect(voiceRefused({ voiceStatus: 429, voiceReason: "quota_exceeded" })).toBe(false);
     expect(voiceRefused(new Error("network"))).toBe(false);
+  });
+});
+
+describe("elevenLabsSynthesize", () => {
+  const opts = { emotion: "neutral" as const, previousText: "" };
+
+  it("retries when ElevenLabs is busy, then speaks", async () => {
+    sdk.busy.set("busy-voice", 2);
+    const audio = await elevenLabsSynthesize("busy-voice")("Hello.", opts, new AbortController().signal);
+    expect(audio.mime).toBe("audio/mpeg");
+    expect(sdk.busy.get("busy-voice")).toBe(0);
+  });
+
+  it("gives up after two retries with ElevenLabs' code", async () => {
+    sdk.busy.set("stuck-voice", 5);
+    await expect(elevenLabsSynthesize("stuck-voice")("Hello.", opts, new AbortController().signal)).rejects.toMatchObject({
+      voiceCode: "elevenlabs_409_already_running",
+    });
+    expect(sdk.busy.get("stuck-voice")).toBe(2); // three attempts made
+  });
+
+  it("treats 409 and 429 as busy, and nothing else", () => {
+    expect(voiceBusy({ voiceStatus: 409 })).toBe(true);
+    expect(voiceBusy({ voiceStatus: 429 })).toBe(true);
+    expect(voiceBusy({ voiceStatus: 401 })).toBe(false);
+    expect(voiceBusy(new Error("network"))).toBe(false);
   });
 });

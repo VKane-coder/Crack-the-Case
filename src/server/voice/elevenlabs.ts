@@ -119,25 +119,43 @@ export function caseVoiceSynthesize(caseVoiceId: string, profile: string): Synth
   };
 }
 
+/** Waits before retrying a request ElevenLabs turned away as busy (it's over the account's concurrency cap). */
+export const BUSY_RETRY_MS = [300, 800];
+
+/** ElevenLabs is busy rather than refusing: 409 "already_running" and 429 (too many requests at once). */
+export function voiceBusy(err: unknown): boolean {
+  const { voiceStatus } = (err ?? {}) as { voiceStatus?: number };
+  return voiceStatus === 409 || voiceStatus === 429;
+}
+
 export function elevenLabsSynthesize(voiceId: string): Synthesize {
   return async (text, { emotion, previousText }, signal) => {
-    const stream = await elevenlabs()
-      .textToSpeech.stream(
-        voiceId,
-        {
-          text,
-          modelId: TTS_MODEL,
-          outputFormat: OUTPUT_FORMAT,
-          languageCode: "en",
-          previousText: previousText || undefined,
-          voiceSettings: { ...voiceSettingsFor(emotion), style: 0, useSpeakerBoost: false },
-        },
-        { abortSignal: signal, maxRetries: 0, timeoutInSeconds: 15 },
-      )
-      .catch((err) => {
-        throw tagged(err);
-      });
-    return { data: await collect(stream), mime: "audio/mpeg" };
+    for (let attempt = 0; ; attempt++) {
+      try {
+        const stream = await elevenlabs()
+          .textToSpeech.stream(
+            voiceId,
+            {
+              text,
+              modelId: TTS_MODEL,
+              outputFormat: OUTPUT_FORMAT,
+              languageCode: "en",
+              previousText: previousText || undefined,
+              voiceSettings: { ...voiceSettingsFor(emotion), style: 0, useSpeakerBoost: false },
+            },
+            { abortSignal: signal, maxRetries: 0, timeoutInSeconds: 15 },
+          )
+          .catch((err) => {
+            throw tagged(err);
+          });
+        return { data: await collect(stream), mime: "audio/mpeg" };
+      } catch (err) {
+        const wait = BUSY_RETRY_MS[attempt];
+        if (!voiceBusy(err) || wait === undefined || signal.aborted) throw err;
+        await new Promise((resume) => setTimeout(resume, wait));
+        if (signal.aborted) throw err;
+      }
+    }
   };
 }
 
