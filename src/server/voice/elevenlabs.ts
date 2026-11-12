@@ -17,7 +17,11 @@ function tagged(err: unknown): Error {
   const { statusCode, body } = (err ?? {}) as { statusCode?: number; body?: { detail?: { status?: string } } };
   const reason = body?.detail?.status;
   const code = `elevenlabs_${statusCode ?? "network"}${reason ? `_${reason}` : ""}`;
-  return Object.assign(err instanceof Error ? err : new Error(String(err)), { voiceCode: code, voiceStatus: statusCode, voiceReason: reason });
+  return Object.assign(err instanceof Error ? err : new Error(String(err)), {
+    voiceCode: code,
+    voiceStatus: statusCode,
+    voiceReason: reason,
+  });
 }
 
 /**
@@ -27,7 +31,11 @@ function tagged(err: unknown): Error {
  */
 export function voiceRefused(err: unknown): boolean {
   const { voiceStatus, voiceReason } = (err ?? {}) as { voiceStatus?: number; voiceReason?: string };
-  return voiceStatus === 402 || voiceStatus === 404 || ["free_users_not_allowed", "payment_required", "voice_not_found"].includes(voiceReason ?? "");
+  return (
+    voiceStatus === 402 ||
+    voiceStatus === 404 ||
+    ["free_users_not_allowed", "payment_required", "voice_not_found"].includes(voiceReason ?? "")
+  );
 }
 
 let client: ElevenLabsClient | undefined;
@@ -100,7 +108,8 @@ export function caseVoiceSynthesize(caseVoiceId: string, profile: string): Synth
         return await elevenLabsSynthesize(caseVoiceId)(text, opts, signal);
       } catch (err) {
         if (!voiceRefused(err)) throw err;
-        if (!isRefused(caseVoiceId)) console.warn("case voice refused; using a built-in voice", { caseVoiceId, code: (err as { voiceCode?: string }).voiceCode });
+        if (!isRefused(caseVoiceId))
+          console.warn("case voice refused; using a built-in voice", { caseVoiceId, code: (err as { voiceCode?: string }).voiceCode });
         refused.set(caseVoiceId, Date.now() + REFUSED_FOR_MS);
       }
     }
@@ -114,17 +123,17 @@ export function elevenLabsSynthesize(voiceId: string): Synthesize {
   return async (text, { emotion, previousText }, signal) => {
     const stream = await elevenlabs()
       .textToSpeech.stream(
-      voiceId,
-      {
-        text,
-        modelId: TTS_MODEL,
-        outputFormat: OUTPUT_FORMAT,
-        languageCode: "en",
-        previousText: previousText || undefined,
-        voiceSettings: { ...voiceSettingsFor(emotion), style: 0, useSpeakerBoost: false },
-      },
-      { abortSignal: signal, maxRetries: 0, timeoutInSeconds: 15 },
-    )
+        voiceId,
+        {
+          text,
+          modelId: TTS_MODEL,
+          outputFormat: OUTPUT_FORMAT,
+          languageCode: "en",
+          previousText: previousText || undefined,
+          voiceSettings: { ...voiceSettingsFor(emotion), style: 0, useSpeakerBoost: false },
+        },
+        { abortSignal: signal, maxRetries: 0, timeoutInSeconds: 15 },
+      )
       .catch((err) => {
         throw tagged(err);
       });

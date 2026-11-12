@@ -7,10 +7,10 @@ export function XpBar({ progress }: { progress: LevelProgress }) {
   return (
     <div className="flex flex-col gap-2">
       <div className="flex items-baseline justify-between text-sm">
-        <span className="flex items-center gap-1.5 font-extrabold text-xp">
+        <span className="text-xp flex items-center gap-1.5 font-extrabold">
           <Sparkles className="size-4" /> Level {progress.level} · {progress.title}
         </span>
-        <span className="font-semibold text-muted-foreground tabular-nums">
+        <span className="text-muted-foreground font-semibold tabular-nums">
           {progress.xpIntoLevel} / {progress.xpForNext} XP
         </span>
       </div>
@@ -20,7 +20,7 @@ export function XpBar({ progress }: { progress: LevelProgress }) {
         className="h-4"
         indicatorClassName="bg-gradient-to-r from-brand-purple via-brand-blue to-brand-teal"
       />
-      <p className="text-xs text-muted-foreground">{toGo} XP to your next level. One more case could do it!</p>
+      <p className="text-muted-foreground text-xs">{toGo} XP to your next level. One more case could do it!</p>
     </div>
   );
 }

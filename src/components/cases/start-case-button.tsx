@@ -30,7 +30,7 @@ export function StartCaseButton({ caseSlug, label = "Start case" }: { caseSlug: 
         <Stethoscope /> {busy ? "Calling them in…" : label}
       </Button>
       {error && (
-        <p role="alert" className="text-sm font-semibold text-destructive">
+        <p role="alert" className="text-destructive text-sm font-semibold">
           {error}
         </p>
       )}

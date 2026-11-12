@@ -44,18 +44,29 @@ async function must<T>(p: PromiseLike<{ data: T; error: { message: string } | nu
   return data;
 }
 
-const descriptors = rubricTemplateSchema.parse(JSON.parse(readFileSync(path.join(ROOT, "content/rubrics/history-station.json"), "utf8"))).global_rating_descriptors;
+const descriptors = rubricTemplateSchema.parse(
+  JSON.parse(readFileSync(path.join(ROOT, "content/rubrics/history-station.json"), "utf8")),
+).global_rating_descriptors;
 
 async function publish(c: ImportedCase, specialtyIds: Map<string, string>) {
   const content = c.content!;
   const rubricId = uuid(`author-rubric:${c.slug}`);
-  const rubric = { domain_weights: {}, global_rating_descriptors: descriptors, examiner_question_bank: [], pass_mark: PASS_MARK, items: c.rubricItems };
+  const rubric = {
+    domain_weights: {},
+    global_rating_descriptors: descriptors,
+    examiner_question_bank: [],
+    pass_mark: PASS_MARK,
+    items: c.rubricItems,
+  };
   const rubricVersionId = uuid(`author-rubric-version:${c.slug}:${sha256(rubric)}`);
 
   await must(db.from("rubrics").upsert({ id: rubricId, name: `${c.title} (${c.slug})`, station_type: "history" }), "rubric");
   const existingRv = await must(db.from("rubric_versions").select("id").eq("id", rubricVersionId).maybeSingle(), "rubric version lookup");
   if (!existingRv) {
-    const last = await must(db.from("rubric_versions").select("version").eq("rubric_id", rubricId).order("version", { ascending: false }).limit(1).maybeSingle(), "rubric versions");
+    const last = await must(
+      db.from("rubric_versions").select("version").eq("rubric_id", rubricId).order("version", { ascending: false }).limit(1).maybeSingle(),
+      "rubric versions",
+    );
     await must(
       db.from("rubric_versions").insert({
         id: rubricVersionId,
@@ -112,7 +123,10 @@ async function publish(c: ImportedCase, specialtyIds: Map<string, string>) {
   const existingVersion = await must(db.from("case_versions").select("id").eq("id", versionId).maybeSingle(), "case version lookup");
   let created = false;
   if (!existingVersion) {
-    const last = await must(db.from("case_versions").select("version").eq("case_id", caseRowId).order("version", { ascending: false }).limit(1).maybeSingle(), "case versions");
+    const last = await must(
+      db.from("case_versions").select("version").eq("case_id", caseRowId).order("version", { ascending: false }).limit(1).maybeSingle(),
+      "case versions",
+    );
     await must(
       db.from("case_versions").insert({
         id: versionId,
@@ -148,11 +162,15 @@ async function main() {
     for (const a of c.assumptions) console.log(`   · ${a}`);
     if (ok) {
       const marks = c.rubricItems.reduce((n, i) => n + i.max_points, 0);
-      console.log(`   = ${c.content!.patient.facts.length} patient facts, ${c.rubricItems.length} marked sections (${marks} marks), ${c.content!.examiner_items.length} examiner questions`);
+      console.log(
+        `   = ${c.content!.patient.facts.length} patient facts, ${c.rubricItems.length} marked sections (${marks} marks), ${c.content!.examiner_items.length} examiner questions`,
+      );
       if (apply) console.log(`   → ${await publish(c, specialtyIds)}`);
     }
   }
-  console.log(`\n${ready} of ${rows.length} cases ready.${apply ? "" : " Dry run: nothing written. Add --apply to publish the ready ones."}`);
+  console.log(
+    `\n${ready} of ${rows.length} cases ready.${apply ? "" : " Dry run: nothing written. Add --apply to publish the ready ones."}`,
+  );
 }
 
 main().catch((e) => {

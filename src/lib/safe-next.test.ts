@@ -8,16 +8,10 @@ describe("safeNext", () => {
     ["/results/abc#report", "/results/abc#report"],
   ])("keeps %s", (input, expected) => expect(safeNext(input)).toBe(expected));
 
-  it.each([
-    [null],
-    [""],
-    ["hub"],
-    ["https://evil.com"],
-    ["//evil.com"],
-    ["/\\evil.com"],
-    ["/\t/evil.com"],
-    ["javascript:alert(1)"],
-  ])("rejects %j", (input) => expect(safeNext(input)).toBe("/hub"));
+  it.each([[null], [""], ["hub"], ["https://evil.com"], ["//evil.com"], ["/\\evil.com"], ["/\t/evil.com"], ["javascript:alert(1)"]])(
+    "rejects %j",
+    (input) => expect(safeNext(input)).toBe("/hub"),
+  );
 
   it("uses the fallback given", () => expect(safeNext(undefined, "/onboarding")).toBe("/onboarding"));
 });

@@ -115,7 +115,7 @@ export const TalkControls = forwardRef<TalkControlsHandle, Props>(function TalkC
             aria-pressed={speech.state === "listening"}
             className={cn(
               "flex h-16 w-full max-w-sm touch-none items-center justify-center gap-2 rounded-2xl text-lg font-black text-white shadow-[0_4px_0_0_rgb(0_0_0/0.15)] transition select-none disabled:opacity-50",
-              pressed ? "scale-[0.98] bg-brand-coral" : "bg-brand-teal hover:brightness-105",
+              pressed ? "bg-brand-coral scale-[0.98]" : "bg-brand-teal hover:brightness-105",
             )}
           >
             <Mic className="size-6" />
@@ -127,14 +127,14 @@ export const TalkControls = forwardRef<TalkControlsHandle, Props>(function TalkC
                   ? "Sending…"
                   : "Hold to talk"}
           </button>
-          <p className="min-h-5 text-center text-sm text-muted-foreground" aria-live="polite">
+          <p className="text-muted-foreground min-h-5 text-center text-sm" aria-live="polite">
             {speech.state === "listening" || speech.state === "finalizing" ? speech.caption || "…" : "or press and hold the space bar"}
           </p>
         </div>
       )}
 
       {speech.error && (
-        <p role="alert" className="rounded-xl bg-destructive/10 p-3 text-sm font-semibold text-destructive">
+        <p role="alert" className="bg-destructive/10 text-destructive rounded-xl p-3 text-sm font-semibold">
           {SPEECH_ERRORS[speech.error]}
           {speech.detail && <span className="ml-1 font-normal opacity-70">({speech.detail})</span>}
         </p>
@@ -158,7 +158,7 @@ export const TalkControls = forwardRef<TalkControlsHandle, Props>(function TalkC
             }
           }}
           placeholder={placeholder}
-          className="min-h-12 flex-1 resize-none rounded-xl border-2 bg-card px-3 py-2 outline-none focus-visible:border-brand-purple"
+          className="bg-card focus-visible:border-brand-purple min-h-12 flex-1 resize-none rounded-xl border-2 px-3 py-2 outline-none"
         />
         <Button type="submit" size="lg" disabled={!draft.trim() || busy} aria-label="Send">
           <Send />

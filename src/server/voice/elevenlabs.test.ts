@@ -6,7 +6,12 @@ const sdk = vi.hoisted(() => ({
   spoken: [] as string[],
   searches: 0,
   voices: [
-    { voiceId: "library-voice", name: "From the Voice Library", category: "professional", labels: { accent: "australian", gender: "female", age: "young" } },
+    {
+      voiceId: "library-voice",
+      name: "From the Voice Library",
+      category: "professional",
+      labels: { accent: "australian", gender: "female", age: "young" },
+    },
     { voiceId: "premade-man", name: "Charlie", category: "premade", labels: { accent: "australian", gender: "male", age: "middle aged" } },
     { voiceId: "premade-woman", name: "Mia", category: "premade", labels: { accent: "australian", gender: "female", age: "young" } },
   ],

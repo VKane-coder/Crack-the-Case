@@ -1,12 +1,5 @@
 import { checkPatientSentence, correctionFor, SAFE_FALLBACK_LINE, type GuardrailVerdict } from "@/server/agents/guardrails/patient";
-import {
-  patientAttempt,
-  type ChatTurn,
-  type Emotion,
-  type ModelCall,
-  type PatientEvent,
-  type StationState,
-} from "@/server/agents/patient";
+import { patientAttempt, type ChatTurn, type Emotion, type ModelCall, type PatientEvent, type StationState } from "@/server/agents/patient";
 import type { PatientLlm } from "@/server/agents/patient/llm";
 import type { PatientView } from "@/server/cases/projector";
 
@@ -59,7 +52,14 @@ export async function runPatientTurn(opts: {
     calls.push(...result.calls);
 
     if (result.status === "complete") {
-      return { text: result.text, emotion: result.emotion, factIds: result.factIds, outcome: attempt ? "regenerated" : "ok", guardrail: tripped, calls };
+      return {
+        text: result.text,
+        emotion: result.emotion,
+        factIds: result.factIds,
+        outcome: attempt ? "regenerated" : "ok",
+        guardrail: tripped,
+        calls,
+      };
     }
     if (emitted) {
       opts.emit({ type: "reset" });

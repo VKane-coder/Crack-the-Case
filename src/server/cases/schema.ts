@@ -123,14 +123,11 @@ export const caseContentSchema = z
     const flagged = new Set(c.patient.facts.filter((f) => f.is_red_flag).map((f) => f.id));
     const listed = new Set(c.clinical.red_flags.map((r) => r.fact_id));
     for (const id of listed)
-      if (!ids.includes(id))
-        ctx.addIssue({ code: "custom", path: ["clinical", "red_flags"], message: `unknown fact id: ${id}` });
+      if (!ids.includes(id)) ctx.addIssue({ code: "custom", path: ["clinical", "red_flags"], message: `unknown fact id: ${id}` });
     for (const id of flagged)
-      if (!listed.has(id))
-        ctx.addIssue({ code: "custom", path: ["clinical", "red_flags"], message: `red-flag fact ${id} not explained` });
+      if (!listed.has(id)) ctx.addIssue({ code: "custom", path: ["clinical", "red_flags"], message: `red-flag fact ${id} not explained` });
     for (const id of listed)
-      if (!flagged.has(id))
-        ctx.addIssue({ code: "custom", path: ["patient", "facts"], message: `fact ${id} must set is_red_flag` });
+      if (!flagged.has(id)) ctx.addIssue({ code: "custom", path: ["patient", "facts"], message: `fact ${id} must set is_red_flag` });
   });
 
 export const rubricItemSchema = z.object({
@@ -160,15 +157,12 @@ export const caseRubricSchema = z.object({
   items: z.array(rubricItemSchema).min(1),
 });
 
-export const caseFileSchema = z
-  .object({ case: caseContentSchema, rubric: caseRubricSchema })
-  .superRefine((f, ctx) => {
-    const ids = new Set(f.case.patient.facts.map((x) => x.id));
-    for (const item of f.rubric.items)
-      for (const id of item.linked_fact_ids)
-        if (!ids.has(id))
-          ctx.addIssue({ code: "custom", path: ["rubric", "items"], message: `${item.key}: unknown fact ${id}` });
-  });
+export const caseFileSchema = z.object({ case: caseContentSchema, rubric: caseRubricSchema }).superRefine((f, ctx) => {
+  const ids = new Set(f.case.patient.facts.map((x) => x.id));
+  for (const item of f.rubric.items)
+    for (const id of item.linked_fact_ids)
+      if (!ids.has(id)) ctx.addIssue({ code: "custom", path: ["rubric", "items"], message: `${item.key}: unknown fact ${id}` });
+});
 
 export type CaseContent = z.infer<typeof caseContentSchema>;
 export type CaseFile = z.infer<typeof caseFileSchema>;

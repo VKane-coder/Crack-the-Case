@@ -8,7 +8,12 @@ import { Sparkles } from "lucide-react";
 const BRAND = ["#5b8def", "#14b8a6", "#8b5cf6", "#6ee7b7", "#ff7a6b", "#f5b83d"];
 
 /** Confetti plus an XP count-up. Reused by onboarding now and by post-station results later. */
-export function Celebration({ xp, title, subtitle, children }: {
+export function Celebration({
+  xp,
+  title,
+  subtitle,
+  children,
+}: {
   xp: number;
   title: string;
   subtitle?: string;
@@ -35,10 +40,10 @@ export function Celebration({ xp, title, subtitle, children }: {
         🎉
       </div>
       <h1 className="text-3xl font-black sm:text-4xl">{title}</h1>
-      {subtitle && <p className="max-w-sm text-lg text-muted-foreground">{subtitle}</p>}
+      {subtitle && <p className="text-muted-foreground max-w-sm text-lg">{subtitle}</p>}
       {xp > 0 && (
         <div
-          className="flex items-center gap-2 rounded-full bg-gradient-to-r from-brand-purple to-brand-blue px-5 py-2 text-xl font-black text-white shadow-lg"
+          className="from-brand-purple to-brand-blue flex items-center gap-2 rounded-full bg-gradient-to-r px-5 py-2 text-xl font-black text-white shadow-lg"
           aria-live="polite"
         >
           <Sparkles className="size-5" /> <span className="tabular-nums">+{shown} XP</span>

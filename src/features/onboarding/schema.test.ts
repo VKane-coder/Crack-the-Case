@@ -6,7 +6,9 @@ describe("onboarding schemas", () => {
     const ok = avatarStepSchema.parse({ display_name: "  Priya  ", avatar_id: "8f14e45f-ceea-4e7a-9d6b-3b1c2a4d5e6f" });
     expect(ok.display_name).toBe("Priya");
     expect(avatarStepSchema.safeParse({ display_name: "   ", avatar_id: "8f14e45f-ceea-4e7a-9d6b-3b1c2a4d5e6f" }).success).toBe(false);
-    expect(avatarStepSchema.safeParse({ display_name: "x".repeat(41), avatar_id: "8f14e45f-ceea-4e7a-9d6b-3b1c2a4d5e6f" }).success).toBe(false);
+    expect(avatarStepSchema.safeParse({ display_name: "x".repeat(41), avatar_id: "8f14e45f-ceea-4e7a-9d6b-3b1c2a4d5e6f" }).success).toBe(
+      false,
+    );
   });
 
   it("requires weekly goal >= daily goal", () => {

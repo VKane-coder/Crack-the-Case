@@ -41,27 +41,112 @@
         "severity": "10 out of 10 at onset, now 8"
       },
       "facts": [
-        { "id": "worst_ever", "category": "HPC", "content": "It's the worst headache I've ever had. Nothing like this, ever.", "disclosure": "volunteered", "is_red_flag": true },
-        { "id": "sudden_onset_peak", "category": "HPC", "content": "It came on in a split second, mid-deadlift. It was at its worst within a minute.", "disclosure": "on_open_question", "is_red_flag": true },
-        { "id": "occipital_bat", "category": "HPC", "content": "It started at the back of my head, like being whacked with a cricket bat. Now it's everywhere.", "disclosure": "on_open_question" },
-        { "id": "onset_time", "category": "HPC", "content": "It was about six hours ago, around 9 this morning.", "disclosure": "on_direct_question" },
+        {
+          "id": "worst_ever",
+          "category": "HPC",
+          "content": "It's the worst headache I've ever had. Nothing like this, ever.",
+          "disclosure": "volunteered",
+          "is_red_flag": true
+        },
+        {
+          "id": "sudden_onset_peak",
+          "category": "HPC",
+          "content": "It came on in a split second, mid-deadlift. It was at its worst within a minute.",
+          "disclosure": "on_open_question",
+          "is_red_flag": true
+        },
+        {
+          "id": "occipital_bat",
+          "category": "HPC",
+          "content": "It started at the back of my head, like being whacked with a cricket bat. Now it's everywhere.",
+          "disclosure": "on_open_question"
+        },
+        {
+          "id": "onset_time",
+          "category": "HPC",
+          "content": "It was about six hours ago, around 9 this morning.",
+          "disclosure": "on_direct_question"
+        },
         { "id": "vomiting", "category": "HPC", "content": "I've thrown up twice.", "disclosure": "on_direct_question" },
-        { "id": "neck_stiff", "category": "HPC", "content": "My neck is really stiff and sore.", "disclosure": "on_direct_question", "is_red_flag": true },
+        {
+          "id": "neck_stiff",
+          "category": "HPC",
+          "content": "My neck is really stiff and sore.",
+          "disclosure": "on_direct_question",
+          "is_red_flag": true
+        },
         { "id": "photophobia", "category": "HPC", "content": "The lights in here are killing me.", "disclosure": "on_open_question" },
-        { "id": "brief_loc", "category": "HPC", "content": "Sam said I sort of went blank and dropped the bar for a few seconds. I don't really remember.", "disclosure": "on_direct_question", "is_red_flag": true },
-        { "id": "no_focal", "category": "ROS", "content": "No weakness or numbness. My vision's okay apart from the light hurting.", "disclosure": "on_direct_question" },
-        { "id": "no_fever_rash", "category": "ROS", "content": "No fever that I know of, no rash, I wasn't sick before this.", "disclosure": "on_direct_question" },
+        {
+          "id": "brief_loc",
+          "category": "HPC",
+          "content": "Sam said I sort of went blank and dropped the bar for a few seconds. I don't really remember.",
+          "disclosure": "on_direct_question",
+          "is_red_flag": true
+        },
+        {
+          "id": "no_focal",
+          "category": "ROS",
+          "content": "No weakness or numbness. My vision's okay apart from the light hurting.",
+          "disclosure": "on_direct_question"
+        },
+        {
+          "id": "no_fever_rash",
+          "category": "ROS",
+          "content": "No fever that I know of, no rash, I wasn't sick before this.",
+          "disclosure": "on_direct_question"
+        },
         { "id": "no_trauma", "category": "ROS", "content": "I didn't hit my head on anything.", "disclosure": "on_direct_question" },
-        { "id": "migraine_different", "category": "PMH", "content": "I get migraines a few times a year, but they build up slowly with flashing lights first. This is completely different.", "disclosure": "on_open_question" },
-        { "id": "dh_ocp", "category": "DH", "content": "I'm on the pill, the combined one. And sumatriptan for my migraines, but I haven't taken any today.", "disclosure": "on_direct_question" },
-        { "id": "dh_analgesia_today", "category": "DH", "content": "I had two Panadeine in the car on the way here. Didn't touch it.", "disclosure": "on_direct_question" },
+        {
+          "id": "migraine_different",
+          "category": "PMH",
+          "content": "I get migraines a few times a year, but they build up slowly with flashing lights first. This is completely different.",
+          "disclosure": "on_open_question"
+        },
+        {
+          "id": "dh_ocp",
+          "category": "DH",
+          "content": "I'm on the pill, the combined one. And sumatriptan for my migraines, but I haven't taken any today.",
+          "disclosure": "on_direct_question"
+        },
+        {
+          "id": "dh_analgesia_today",
+          "category": "DH",
+          "content": "I had two Panadeine in the car on the way here. Didn't touch it.",
+          "disclosure": "on_direct_question"
+        },
         { "id": "allergy_nkda", "category": "Allergy", "content": "No allergies.", "disclosure": "on_direct_question" },
-        { "id": "fh_mother_bleed", "category": "FH", "content": "My mum had a bleed on the brain when she was 50. She was in hospital for ages.", "disclosure": "on_direct_question", "is_red_flag": true },
-        { "id": "sh_smoker", "category": "SH", "content": "I smoke, about five a day. I know, I know.", "disclosure": "on_direct_question" },
-        { "id": "sh_alcohol_drugs", "category": "SH", "content": "Few drinks on the weekend. No drugs.", "disclosure": "on_direct_question" },
+        {
+          "id": "fh_mother_bleed",
+          "category": "FH",
+          "content": "My mum had a bleed on the brain when she was 50. She was in hospital for ages.",
+          "disclosure": "on_direct_question",
+          "is_red_flag": true
+        },
+        {
+          "id": "sh_smoker",
+          "category": "SH",
+          "content": "I smoke, about five a day. I know, I know.",
+          "disclosure": "on_direct_question"
+        },
+        {
+          "id": "sh_alcohol_drugs",
+          "category": "SH",
+          "content": "Few drinks on the weekend. No drugs.",
+          "disclosure": "on_direct_question"
+        },
         { "id": "ice_idea", "category": "ICE", "content": "I keep thinking about what happened to Mum.", "disclosure": "on_rapport" },
-        { "id": "ice_concern", "category": "ICE", "content": "I'm scared something's burst in my head and nobody's taking me seriously.", "disclosure": "on_rapport" },
-        { "id": "ice_expectation", "category": "ICE", "content": "I want a scan. I'm not leaving until someone actually checks.", "disclosure": "on_rapport" }
+        {
+          "id": "ice_concern",
+          "category": "ICE",
+          "content": "I'm scared something's burst in my head and nobody's taking me seriously.",
+          "disclosure": "on_rapport"
+        },
+        {
+          "id": "ice_expectation",
+          "category": "ICE",
+          "content": "I want a scan. I'm not leaving until someone actually checks.",
+          "disclosure": "on_rapport"
+        }
       ],
       "ice": {
         "ideas": "Something like her mother's 'bleed on the brain'",
@@ -77,14 +162,46 @@
     },
     "clinical": {
       "diagnosis": "Subarachnoid haemorrhage until proven otherwise",
-      "diagnosis_synonyms": ["subarachnoid haemorrhage", "subarachnoid hemorrhage", "SAH", "aneurysm", "aneurysmal bleed", "brain haemorrhage", "intracranial haemorrhage"],
+      "diagnosis_synonyms": [
+        "subarachnoid haemorrhage",
+        "subarachnoid hemorrhage",
+        "SAH",
+        "aneurysm",
+        "aneurysmal bleed",
+        "brain haemorrhage",
+        "intracranial haemorrhage"
+      ],
       "differentials": [
-        { "dx": "Subarachnoid haemorrhage", "likelihood": "leading", "discriminating_features": "Thunderclap onset during exertion, worst ever, neck stiffness, vomiting, brief LOC, family history of brain haemorrhage, smoker" },
-        { "dx": "Cerebral venous sinus thrombosis", "likelihood": "must_not_miss", "discriminating_features": "Combined OCP and smoking are risk factors; usually subacute onset, may cause seizures or papilloedema" },
-        { "dx": "Reversible cerebral vasoconstriction syndrome", "likelihood": "possible", "discriminating_features": "Recurrent thunderclap headaches, triggered by exertion or vasoactive drugs (e.g. triptans)" },
-        { "dx": "Cervical artery dissection", "likelihood": "possible", "discriminating_features": "Neck pain after strain, may have focal neurology or Horner syndrome" },
-        { "dx": "Meningitis", "likelihood": "possible", "discriminating_features": "Fever, rash, systemic illness. Absent here, and onset too abrupt" },
-        { "dx": "Migraine", "likelihood": "possible", "discriminating_features": "Diagnosis of exclusion. Her typical migraines are gradual with aura, so this differs from her usual pattern" }
+        {
+          "dx": "Subarachnoid haemorrhage",
+          "likelihood": "leading",
+          "discriminating_features": "Thunderclap onset during exertion, worst ever, neck stiffness, vomiting, brief LOC, family history of brain haemorrhage, smoker"
+        },
+        {
+          "dx": "Cerebral venous sinus thrombosis",
+          "likelihood": "must_not_miss",
+          "discriminating_features": "Combined OCP and smoking are risk factors; usually subacute onset, may cause seizures or papilloedema"
+        },
+        {
+          "dx": "Reversible cerebral vasoconstriction syndrome",
+          "likelihood": "possible",
+          "discriminating_features": "Recurrent thunderclap headaches, triggered by exertion or vasoactive drugs (e.g. triptans)"
+        },
+        {
+          "dx": "Cervical artery dissection",
+          "likelihood": "possible",
+          "discriminating_features": "Neck pain after strain, may have focal neurology or Horner syndrome"
+        },
+        {
+          "dx": "Meningitis",
+          "likelihood": "possible",
+          "discriminating_features": "Fever, rash, systemic illness. Absent here, and onset too abrupt"
+        },
+        {
+          "dx": "Migraine",
+          "likelihood": "possible",
+          "discriminating_features": "Diagnosis of exclusion. Her typical migraines are gradual with aura, so this differs from her usual pattern"
+        }
       ],
       "red_flags": [
         { "fact_id": "worst_ever", "why": "First or worst headache is a red flag for secondary causes" },
@@ -122,21 +239,102 @@
       { "question": "How did you approach her frustration about the wait?", "targets": ["deescalation"] }
     ],
     "items": [
-      { "key": "onset_characterised", "domain": "history", "label": "Establishes thunderclap onset: sudden, maximal within a minute, during exertion", "max_points": 3, "linked_fact_ids": ["sudden_onset_peak", "onset_time", "worst_ever"], "is_critical": true },
-      { "key": "red_flags_elicited", "domain": "history", "label": "Elicits neck stiffness, vomiting, brief loss of consciousness and photophobia", "max_points": 4, "linked_fact_ids": ["neck_stiff", "vomiting", "brief_loc", "photophobia"] },
-      { "key": "compares_migraine", "domain": "history", "label": "Compares with her usual migraines", "max_points": 1, "linked_fact_ids": ["migraine_different"] },
-      { "key": "secondary_screen", "domain": "history", "label": "Screens for focal neurology, fever/rash and trauma", "max_points": 2, "linked_fact_ids": ["no_focal", "no_fever_rash", "no_trauma"] },
-      { "key": "meds_allergies", "domain": "history", "label": "Takes a medication and allergy history, including the combined OCP and triptan use", "max_points": 2, "linked_fact_ids": ["dh_ocp", "dh_analgesia_today", "allergy_nkda"] },
-      { "key": "fh_risk", "domain": "history", "label": "Asks about family history and smoking", "max_points": 2, "linked_fact_ids": ["fh_mother_bleed", "sh_smoker"] },
-      { "key": "deescalation", "domain": "communication", "label": "Acknowledges the wait and her frustration; de-escalates without being defensive", "max_points": 3 },
-      { "key": "ice_explored", "domain": "communication", "label": "Explores her fear about her mother's history and her wish for a scan", "max_points": 2, "linked_fact_ids": ["ice_idea", "ice_concern", "ice_expectation"] },
-      { "key": "ddx_leading", "domain": "differentials", "label": "Gives subarachnoid haemorrhage as the leading diagnosis", "max_points": 3, "is_critical": true },
-      { "key": "ddx_dangerous", "domain": "differentials", "label": "Considers CVST, dissection, RCVS and meningitis, with reasons", "max_points": 2 },
-      { "key": "inv_ct", "domain": "investigations", "label": "Requests an urgent non-contrast CT brain", "max_points": 2, "is_critical": true },
-      { "key": "inv_followup", "domain": "investigations", "label": "Knows the next step if CT is negative (LP ≥12 h for xanthochromia and/or CTA)", "max_points": 2 },
-      { "key": "mx_escalate_monitor", "domain": "management", "label": "Escalates to a senior, monitors neuro obs, gives analgesia/antiemetic, keeps nil by mouth", "max_points": 3 },
+      {
+        "key": "onset_characterised",
+        "domain": "history",
+        "label": "Establishes thunderclap onset: sudden, maximal within a minute, during exertion",
+        "max_points": 3,
+        "linked_fact_ids": ["sudden_onset_peak", "onset_time", "worst_ever"],
+        "is_critical": true
+      },
+      {
+        "key": "red_flags_elicited",
+        "domain": "history",
+        "label": "Elicits neck stiffness, vomiting, brief loss of consciousness and photophobia",
+        "max_points": 4,
+        "linked_fact_ids": ["neck_stiff", "vomiting", "brief_loc", "photophobia"]
+      },
+      {
+        "key": "compares_migraine",
+        "domain": "history",
+        "label": "Compares with her usual migraines",
+        "max_points": 1,
+        "linked_fact_ids": ["migraine_different"]
+      },
+      {
+        "key": "secondary_screen",
+        "domain": "history",
+        "label": "Screens for focal neurology, fever/rash and trauma",
+        "max_points": 2,
+        "linked_fact_ids": ["no_focal", "no_fever_rash", "no_trauma"]
+      },
+      {
+        "key": "meds_allergies",
+        "domain": "history",
+        "label": "Takes a medication and allergy history, including the combined OCP and triptan use",
+        "max_points": 2,
+        "linked_fact_ids": ["dh_ocp", "dh_analgesia_today", "allergy_nkda"]
+      },
+      {
+        "key": "fh_risk",
+        "domain": "history",
+        "label": "Asks about family history and smoking",
+        "max_points": 2,
+        "linked_fact_ids": ["fh_mother_bleed", "sh_smoker"]
+      },
+      {
+        "key": "deescalation",
+        "domain": "communication",
+        "label": "Acknowledges the wait and her frustration; de-escalates without being defensive",
+        "max_points": 3
+      },
+      {
+        "key": "ice_explored",
+        "domain": "communication",
+        "label": "Explores her fear about her mother's history and her wish for a scan",
+        "max_points": 2,
+        "linked_fact_ids": ["ice_idea", "ice_concern", "ice_expectation"]
+      },
+      {
+        "key": "ddx_leading",
+        "domain": "differentials",
+        "label": "Gives subarachnoid haemorrhage as the leading diagnosis",
+        "max_points": 3,
+        "is_critical": true
+      },
+      {
+        "key": "ddx_dangerous",
+        "domain": "differentials",
+        "label": "Considers CVST, dissection, RCVS and meningitis, with reasons",
+        "max_points": 2
+      },
+      {
+        "key": "inv_ct",
+        "domain": "investigations",
+        "label": "Requests an urgent non-contrast CT brain",
+        "max_points": 2,
+        "is_critical": true
+      },
+      {
+        "key": "inv_followup",
+        "domain": "investigations",
+        "label": "Knows the next step if CT is negative (LP ≥12 h for xanthochromia and/or CTA)",
+        "max_points": 2
+      },
+      {
+        "key": "mx_escalate_monitor",
+        "domain": "management",
+        "label": "Escalates to a senior, monitors neuro obs, gives analgesia/antiemetic, keeps nil by mouth",
+        "max_points": 3
+      },
       { "key": "mx_neurosurgery", "domain": "management", "label": "Plans neurosurgical referral if confirmed", "max_points": 2 },
-      { "key": "urgency_recognised", "domain": "patient_safety", "label": "Recognises that this is not a migraine until proven otherwise and acts urgently", "max_points": 2, "is_critical": true }
+      {
+        "key": "urgency_recognised",
+        "domain": "patient_safety",
+        "label": "Recognises that this is not a migraine until proven otherwise and acts urgently",
+        "max_points": 2,
+        "is_critical": true
+      }
     ]
   }
 }

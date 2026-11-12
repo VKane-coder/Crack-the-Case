@@ -8,16 +8,16 @@ version they were marked against.
 
 ## Columns
 
-| Column | What goes in it |
-|---|---|
-| `title` | The case name students see, e.g. `Renal Case`. Also used for the case's web address, so keep it stable. |
-| `patient.name` | The person the student talks to (for a child, the parent who's speaking). |
-| `patient.profile` | The patient's script: question/answer pairs, grouped however you like. See below. |
-| `Voice ID` | The ElevenLabs voice id for this patient. |
-| `Pre Reading Material` | The scenario shown during reading time. Must include the patient's age and sex (e.g. "a 63-year-old man"). |
+| Column                    | What goes in it                                                                                                                                                    |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `title`                   | The case name students see, e.g. `Renal Case`. Also used for the case's web address, so keep it stable.                                                            |
+| `patient.name`            | The person the student talks to (for a child, the parent who's speaking).                                                                                          |
+| `patient.profile`         | The patient's script: question/answer pairs, grouped however you like. See below.                                                                                  |
+| `Voice ID`                | The ElevenLabs voice id for this patient.                                                                                                                          |
+| `Pre Reading Material`    | The scenario shown during reading time. Must include the patient's age and sex (e.g. "a 63-year-old man").                                                         |
 | `Assessment Instructions` | The tasks, e.g. `"You will have 8 minutes to perform the following:\n 1. Take a history ... (5 minutes).\n 2. ..."`. The total (8 minutes) sets the station clock. |
-| `Marking Rubric` | The mark scheme. See below. |
-| `Avatar` | The patient's picture: a file name in the `OSCE-ASSETS` storage bucket. |
+| `Marking Rubric`          | The mark scheme. See below.                                                                                                                                        |
+| `Avatar`                  | The patient's picture: a file name in the `OSCE-ASSETS` storage bucket.                                                                                            |
 
 ## The patient's script (`patient.profile`)
 

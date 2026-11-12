@@ -21,20 +21,21 @@ export default async function StationPage({ params }: PageProps<"/station/[id]">
 
   // Previews say which voice keys are missing, so a Vercel env-var mistake is visible at a glance.
   const missing = [!sttAvailable() && "DEEPGRAM_API_KEY", !ttsAvailable() && "ELEVENLABS_API_KEY"].filter(Boolean);
-  const setupNote = process.env.VERCEL_ENV === "preview" && missing.length ? `Preview setup: ${missing.join(" and ")} not found, so voice is off.` : null;
+  const setupNote =
+    process.env.VERCEL_ENV === "preview" && missing.length ? `Preview setup: ${missing.join(" and ")} not found, so voice is off.` : null;
 
   return (
-    <div className="min-h-dvh bg-background">
+    <div className="bg-background min-h-dvh">
       <header className="border-b">
         <div className="mx-auto flex h-14 max-w-3xl items-center justify-between gap-3 px-4">
           <span className="truncate font-extrabold">{station.title}</span>
-          <Link href="/hub" className="shrink-0 text-sm font-bold text-muted-foreground hover:text-foreground">
+          <Link href="/hub" className="text-muted-foreground hover:text-foreground shrink-0 text-sm font-bold">
             Exit station
           </Link>
         </div>
       </header>
       <main className="mx-auto max-w-3xl px-4 py-5">
-        {setupNote && <p className="mb-4 rounded-xl bg-muted p-3 text-center text-sm text-muted-foreground">{setupNote}</p>}
+        {setupNote && <p className="bg-muted text-muted-foreground mb-4 rounded-xl p-3 text-center text-sm">{setupNote}</p>}
         <StationClient
           station={station}
           voice={{ input: sttAvailable(), output: ttsAvailable() }}

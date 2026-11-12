@@ -5,7 +5,14 @@ const rubric: ScoringRubric = {
   pass_mark: 55,
   domain_weights: { history: 0.5, communication: 0.5, management: 0 },
   items: [
-    { key: "red_flags", domain: "history", label: "Elicits red flags", max_points: 4, linked_fact_ids: ["bleed", "weight"], is_critical: true },
+    {
+      key: "red_flags",
+      domain: "history",
+      label: "Elicits red flags",
+      max_points: 4,
+      linked_fact_ids: ["bleed", "weight"],
+      is_critical: true,
+    },
     { key: "duration", domain: "history", label: "Duration", max_points: 2, linked_fact_ids: ["duration"], is_critical: false },
     { key: "empathy", domain: "communication", label: "Empathy", max_points: 2, linked_fact_ids: [], is_critical: false },
     { key: "plan", domain: "management", label: "Plan", max_points: 2, linked_fact_ids: [], is_critical: false },

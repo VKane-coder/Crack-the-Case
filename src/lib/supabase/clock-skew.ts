@@ -7,7 +7,10 @@ const RETRIES = 2;
 const WAIT_MS = 1000;
 
 /** A fetch for Supabase clients that retries data requests rejected with PGRST303. */
-export function retryClockSkew(baseFetch: typeof fetch = fetch, wait = (ms: number) => new Promise((r) => setTimeout(r, ms))): typeof fetch {
+export function retryClockSkew(
+  baseFetch: typeof fetch = fetch,
+  wait = (ms: number) => new Promise((r) => setTimeout(r, ms)),
+): typeof fetch {
   return async (input, init) => {
     for (let attempt = 0; ; attempt++) {
       const res = await baseFetch(input, init);

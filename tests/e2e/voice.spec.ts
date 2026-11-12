@@ -17,7 +17,11 @@ const teeTurns = () => {
   const original = window.fetch;
   window.fetch = async (...args) => {
     const res = await original(...args);
-    if (String(args[0]).endsWith("/patient-turn")) void res.clone().text().then((t) => w.__turnBodies.push(t));
+    if (String(args[0]).endsWith("/patient-turn"))
+      void res
+        .clone()
+        .text()
+        .then((t) => w.__turnBodies.push(t));
     return res;
   };
 };

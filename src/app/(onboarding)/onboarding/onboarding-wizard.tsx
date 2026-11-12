@@ -116,7 +116,7 @@ export function OnboardingWizard({
           subtitle="Your first patient is waiting. Let's crack that first case."
         >
           {avatar && (
-            <div className="grid size-20 place-items-center rounded-full bg-card text-5xl shadow-md" aria-hidden>
+            <div className="bg-card grid size-20 place-items-center rounded-full text-5xl shadow-md" aria-hidden>
               {avatar.emoji}
             </div>
           )}
@@ -136,15 +136,15 @@ export function OnboardingWizard({
           onClick={back}
           disabled={stepIndex === 0 || pending}
           aria-label="Back"
-          className="grid size-10 shrink-0 place-items-center rounded-xl text-muted-foreground hover:bg-muted disabled:invisible"
+          className="text-muted-foreground hover:bg-muted grid size-10 shrink-0 place-items-center rounded-xl disabled:invisible"
         >
           <ArrowLeft className="size-5" />
         </button>
         <div className="flex flex-1 gap-1.5" aria-label={`Step ${stepIndex + 1} of ${ONBOARDING_STEPS.length}`}>
           {ONBOARDING_STEPS.map((s, i) => (
-            <div key={s} className="h-2.5 flex-1 overflow-hidden rounded-full bg-muted">
+            <div key={s} className="bg-muted h-2.5 flex-1 overflow-hidden rounded-full">
               <motion.div
-                className="h-full rounded-full bg-gradient-to-r from-brand-teal to-brand-blue"
+                className="from-brand-teal to-brand-blue h-full rounded-full bg-gradient-to-r"
                 initial={false}
                 animate={{ width: i <= stepIndex ? "100%" : "0%" }}
                 transition={{ duration: 0.4 }}
@@ -152,7 +152,7 @@ export function OnboardingWizard({
             </div>
           ))}
         </div>
-        <span className="w-10 text-right text-sm font-bold text-muted-foreground tabular-nums">
+        <span className="text-muted-foreground w-10 text-right text-sm font-bold tabular-nums">
           {stepIndex + 1}/{ONBOARDING_STEPS.length}
         </span>
       </div>
@@ -169,7 +169,7 @@ export function OnboardingWizard({
         >
           <header>
             <h1 className="text-2xl font-black sm:text-3xl">{HEADINGS[step].title}</h1>
-            <p className="mt-1 text-muted-foreground">{HEADINGS[step].subtitle}</p>
+            <p className="text-muted-foreground mt-1">{HEADINGS[step].subtitle}</p>
           </header>
 
           {step === "avatar" && <AvatarStep draft={draft} update={update} avatars={avatars} />}
@@ -179,9 +179,9 @@ export function OnboardingWizard({
         </motion.section>
       </AnimatePresence>
 
-      <div className="sticky bottom-0 mt-8 flex flex-col gap-3 bg-gradient-to-t from-background via-background/95 to-transparent pt-4 pb-4">
+      <div className="from-background via-background/95 sticky bottom-0 mt-8 flex flex-col gap-3 bg-gradient-to-t to-transparent pt-4 pb-4">
         {error && (
-          <p role="alert" className="rounded-xl bg-destructive/10 p-3 text-center text-sm font-semibold text-destructive">
+          <p role="alert" className="bg-destructive/10 text-destructive rounded-xl p-3 text-center text-sm font-semibold">
             {error}
           </p>
         )}
@@ -233,8 +233,8 @@ function AvatarStep({ draft, update, avatars }: StepProps & { avatars: AvatarOpt
               disabled={a.locked}
               onClick={() => update({ avatar_id: a.id })}
               className={cn(
-                "relative flex flex-col items-center gap-1 rounded-2xl border-2 bg-card p-3 transition-all",
-                selected ? "scale-[1.03] border-brand-purple shadow-md ring-4 ring-brand-purple/15" : "hover:border-primary/40",
+                "bg-card relative flex flex-col items-center gap-1 rounded-2xl border-2 p-3 transition-all",
+                selected ? "border-brand-purple ring-brand-purple/15 scale-[1.03] shadow-md ring-4" : "hover:border-primary/40",
                 a.locked && "cursor-not-allowed opacity-60",
               )}
             >
@@ -243,12 +243,12 @@ function AvatarStep({ draft, update, avatars }: StepProps & { avatars: AvatarOpt
               </span>
               <span className="text-xs leading-tight font-bold">{a.name}</span>
               {a.locked && (
-                <span className="flex items-center gap-1 text-[10px] font-semibold text-muted-foreground">
+                <span className="text-muted-foreground flex items-center gap-1 text-[10px] font-semibold">
                   <Lock className="size-3" /> {a.unlockHint}
                 </span>
               )}
               {selected && (
-                <span className="absolute -top-2 -right-2 grid size-6 place-items-center rounded-full bg-brand-purple text-white">
+                <span className="bg-brand-purple absolute -top-2 -right-2 grid size-6 place-items-center rounded-full text-white">
                   <Check className="size-4" />
                 </span>
               )}
@@ -279,23 +279,23 @@ function GoalsStep({ draft, update }: StepProps) {
                 })
               }
               className={cn(
-                "flex flex-col items-start gap-1 rounded-2xl border-2 bg-card p-4 text-left transition-all",
-                selected ? "border-brand-teal shadow-md ring-4 ring-brand-teal/15" : "hover:border-primary/40",
+                "bg-card flex flex-col items-start gap-1 rounded-2xl border-2 p-4 text-left transition-all",
+                selected ? "border-brand-teal ring-brand-teal/15 shadow-md ring-4" : "hover:border-primary/40",
               )}
             >
               <span className="text-3xl" aria-hidden>
                 {o.emoji}
               </span>
               <span className="font-extrabold">{o.label}</span>
-              <span className="text-sm text-muted-foreground">{o.blurb}</span>
+              <span className="text-muted-foreground text-sm">{o.blurb}</span>
             </button>
           );
         })}
       </div>
-      <div className="flex items-center justify-between rounded-2xl border-2 bg-card p-4">
+      <div className="bg-card flex items-center justify-between rounded-2xl border-2 p-4">
         <div>
           <div className="font-extrabold">Weekly goal</div>
-          <div className="text-sm text-muted-foreground">Cases per week</div>
+          <div className="text-muted-foreground text-sm">Cases per week</div>
         </div>
         <div className="flex items-center gap-3">
           <Button
@@ -342,22 +342,22 @@ function ExamStep({ draft, update }: StepProps) {
               aria-checked={selected}
               onClick={() => update({ exam_type: t.value })}
               className={cn(
-                "flex items-center gap-3 rounded-2xl border-2 bg-card p-4 text-left font-extrabold transition-all",
-                selected ? "border-brand-blue shadow-md ring-4 ring-brand-blue/15" : "hover:border-primary/40",
+                "bg-card flex items-center gap-3 rounded-2xl border-2 p-4 text-left font-extrabold transition-all",
+                selected ? "border-brand-blue ring-brand-blue/15 shadow-md ring-4" : "hover:border-primary/40",
               )}
             >
               <span className="text-2xl" aria-hidden>
                 {t.emoji}
               </span>
               {t.label}
-              {selected && <Check className="ml-auto size-5 text-brand-blue" />}
+              {selected && <Check className="text-brand-blue ml-auto size-5" />}
             </button>
           );
         })}
       </div>
       <div className="flex flex-col gap-2">
         <label htmlFor="exam_date" className="text-sm font-bold">
-          Exam date <span className="font-normal text-muted-foreground">(optional)</span>
+          Exam date <span className="text-muted-foreground font-normal">(optional)</span>
         </label>
         <Input
           id="exam_date"
@@ -367,13 +367,13 @@ function ExamStep({ draft, update }: StepProps) {
           onChange={(e) => update({ exam_date: e.target.value || null })}
         />
         {days !== null && days >= 0 && (
-          <p className="rounded-xl bg-brand-purple/10 p-3 text-center font-bold text-brand-purple">
-            {days === 0 ? "It's today! You've got this. 💜" : `${days} day${days === 1 ? "" : "s"} to go. Plenty of time to get exam-ready.`}
+          <p className="bg-brand-purple/10 text-brand-purple rounded-xl p-3 text-center font-bold">
+            {days === 0
+              ? "It's today! You've got this. 💜"
+              : `${days} day${days === 1 ? "" : "s"} to go. Plenty of time to get exam-ready.`}
           </p>
         )}
-        {draft.exam_date === null && (
-          <p className="text-sm text-muted-foreground">No date yet? No worries, you can add it later.</p>
-        )}
+        {draft.exam_date === null && <p className="text-muted-foreground text-sm">No date yet? No worries, you can add it later.</p>}
       </div>
     </>
   );

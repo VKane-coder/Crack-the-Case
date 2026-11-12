@@ -67,7 +67,7 @@ export function LoginForm({ next, initialError, googleEnabled }: Props) {
                 🩺
               </div>
               <h1 className="text-2xl font-black">Ready to crack some cases?</h1>
-              <p className="mt-1 text-muted-foreground">Sign in or create an account. No password needed.</p>
+              <p className="text-muted-foreground mt-1">Sign in or create an account. No password needed.</p>
             </div>
 
             {googleEnabled && (
@@ -75,8 +75,8 @@ export function LoginForm({ next, initialError, googleEnabled }: Props) {
                 <Button variant="outline" size="lg" onClick={google} disabled={pending}>
                   <GoogleIcon /> Continue with Google
                 </Button>
-                <div className="flex items-center gap-3 text-xs font-bold text-muted-foreground uppercase">
-                  <span className="h-px flex-1 bg-border" /> or <span className="h-px flex-1 bg-border" />
+                <div className="text-muted-foreground flex items-center gap-3 text-xs font-bold uppercase">
+                  <span className="bg-border h-px flex-1" /> or <span className="bg-border h-px flex-1" />
                 </div>
               </>
             )}
@@ -107,7 +107,7 @@ export function LoginForm({ next, initialError, googleEnabled }: Props) {
               </Button>
               <button
                 type="button"
-                className="text-sm font-bold text-muted-foreground hover:text-foreground disabled:opacity-50"
+                className="text-muted-foreground hover:text-foreground text-sm font-bold disabled:opacity-50"
                 disabled={!email || pending}
                 onClick={() => {
                   setError(undefined);
@@ -128,13 +128,13 @@ export function LoginForm({ next, initialError, googleEnabled }: Props) {
             className="flex flex-col gap-5"
           >
             <div className="text-center">
-              <div className="mx-auto mb-3 grid size-14 place-items-center rounded-2xl bg-brand-teal/15 text-brand-teal">
+              <div className="bg-brand-teal/15 text-brand-teal mx-auto mb-3 grid size-14 place-items-center rounded-2xl">
                 <MailCheck className="size-7" />
               </div>
               <h1 className="text-2xl font-black">{emailSent ? "Check your inbox" : "Enter your code"}</h1>
-              <p className="mt-1 text-muted-foreground">
+              <p className="text-muted-foreground mt-1">
                 {emailSent ? "We sent a link and a 6-digit code to " : "Type the 6-digit code from your latest sign-in email to "}
-                <span className="font-bold text-foreground">{email}</span>
+                <span className="text-foreground font-bold">{email}</span>
                 {emailSent ? ". Tap the link, or type the code here." : "."}
               </p>
             </div>
@@ -168,7 +168,7 @@ export function LoginForm({ next, initialError, googleEnabled }: Props) {
             <div className="flex items-center justify-between text-sm">
               <button
                 type="button"
-                className="flex items-center gap-1 font-bold text-muted-foreground hover:text-foreground"
+                className="text-muted-foreground hover:text-foreground flex items-center gap-1 font-bold"
                 onClick={() => {
                   setStep("email");
                   setCode("");
@@ -177,7 +177,7 @@ export function LoginForm({ next, initialError, googleEnabled }: Props) {
               >
                 <ArrowLeft className="size-4" /> Different email
               </button>
-              <button type="button" className="font-bold text-primary" onClick={() => send(emailSent)} disabled={pending}>
+              <button type="button" className="text-primary font-bold" onClick={() => send(emailSent)} disabled={pending}>
                 {emailSent ? "Resend email" : "Send me a code"}
               </button>
             </div>
@@ -185,9 +185,9 @@ export function LoginForm({ next, initialError, googleEnabled }: Props) {
         )}
       </AnimatePresence>
 
-      {notice && !error && <p className="rounded-xl bg-brand-teal/10 p-3 text-center text-sm font-semibold text-brand-teal">{notice}</p>}
+      {notice && !error && <p className="bg-brand-teal/10 text-brand-teal rounded-xl p-3 text-center text-sm font-semibold">{notice}</p>}
       {error && (
-        <p role="alert" className="rounded-xl bg-destructive/10 p-3 text-center text-sm font-semibold text-destructive">
+        <p role="alert" className="bg-destructive/10 text-destructive rounded-xl p-3 text-center text-sm font-semibold">
           {error}
         </p>
       )}

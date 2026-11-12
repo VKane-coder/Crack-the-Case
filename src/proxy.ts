@@ -13,20 +13,16 @@ export async function proxy(request: NextRequest) {
   // closed, because requireUser() validates env and the session itself.
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) return response;
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll: () => request.cookies.getAll(),
-        setAll: (toSet) => {
-          toSet.forEach(({ name, value }) => request.cookies.set(name, value));
-          response = NextResponse.next({ request });
-          toSet.forEach(({ name, value, options }) => response.cookies.set(name, value, options));
-        },
+  const supabase = createServerClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, {
+    cookies: {
+      getAll: () => request.cookies.getAll(),
+      setAll: (toSet) => {
+        toSet.forEach(({ name, value }) => request.cookies.set(name, value));
+        response = NextResponse.next({ request });
+        toSet.forEach(({ name, value, options }) => response.cookies.set(name, value, options));
       },
     },
-  );
+  });
 
   // Must run before any redirect decision; it also refreshes expired tokens.
   const { data } = await supabase.auth.getClaims();

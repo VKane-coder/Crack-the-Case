@@ -41,7 +41,7 @@ export function CaseCard({ c, canStart }: { c: CatalogCase & { progress: CasePro
         </Badge>
       </CardContent>
       <div className="flex items-center justify-between gap-3">
-        <span className="text-sm font-bold text-xp">Up to +{maxStationXp(c.difficulty)} XP</span>
+        <span className="text-xp text-sm font-bold">Up to +{maxStationXp(c.difficulty)} XP</span>
         {canStart ? (
           <StartCaseButton caseSlug={c.slug} label={c.progress.completed ? "Try again" : "Start case"} />
         ) : (

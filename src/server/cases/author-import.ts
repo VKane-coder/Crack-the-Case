@@ -1,10 +1,5 @@
 import { findLeaks, leakTerms, toPatientView } from "./projector";
-import {
-  caseContentSchema,
-  FACT_CATEGORIES,
-  type CaseContent,
-  type RubricItem,
-} from "./schema";
+import { caseContentSchema, FACT_CATEGORIES, type CaseContent, type RubricItem } from "./schema";
 
 // Converts a case written by the content author into the app's case format. Authors write cases in
 // the Supabase "Patients" table as free-form JSON (question/answer pairs for the patient, marked
@@ -73,7 +68,10 @@ export function slugify(s: string): string {
 const keyify = (s: string) => slugify(s).replace(/-/g, "_") || "item";
 
 const humanize = (s: string) => {
-  const t = s.replace(/^\d+_marks?$/, (m) => m.replace("_", " ")).replace(/_/g, " ").trim();
+  const t = s
+    .replace(/^\d+_marks?$/, (m) => m.replace("_", " "))
+    .replace(/_/g, " ")
+    .trim();
   return t.charAt(0).toUpperCase() + t.slice(1);
 };
 
@@ -129,7 +127,12 @@ function factsFrom(profile: unknown) {
     if (seen.has(dedupe)) continue;
     seen.add(dedupe);
     const category = categoryFor(qa.path);
-    const base = keyify(qa.path.filter((p) => !WRAPPERS.has(p)).slice(-2).join("_") || category).slice(0, 40);
+    const base = keyify(
+      qa.path
+        .filter((p) => !WRAPPERS.has(p))
+        .slice(-2)
+        .join("_") || category,
+    ).slice(0, 40);
     let id = base;
     for (let n = 2; ids.has(id); n++) id = `${base}_${n}`;
     ids.add(id);
@@ -159,11 +162,15 @@ function readingText(pre: unknown): string {
   const p = isObj(structured.patient) ? structured.patient : {};
   const parts: string[] = [];
   if (structured.clinician_role || structured.setting) {
-    parts.push(`You are ${structured.clinician_role ? `a${/^[aeiou]/i.test(String(structured.clinician_role)) ? "n" : ""} ${String(structured.clinician_role).toLowerCase()}` : "a doctor"}${structured.setting ? ` in a ${String(structured.setting).toLowerCase()}` : ""}.`);
+    parts.push(
+      `You are ${structured.clinician_role ? `a${/^[aeiou]/i.test(String(structured.clinician_role)) ? "n" : ""} ${String(structured.clinician_role).toLowerCase()}` : "a doctor"}${structured.setting ? ` in a ${String(structured.setting).toLowerCase()}` : ""}.`,
+    );
   }
   if (p.name) {
     const who = [p.age ? `${p.age}-year-old` : "", p.gender ? String(p.gender).toLowerCase() : ""].filter(Boolean).join(" ");
-    parts.push(`${p.name}${who ? `, a ${who},` : ""} presents to you${structured.presenting_complaint ? ` saying: "${structured.presenting_complaint}"` : ""}.`);
+    parts.push(
+      `${p.name}${who ? `, a ${who},` : ""} presents to you${structured.presenting_complaint ? ` saying: "${structured.presenting_complaint}"` : ""}.`,
+    );
   }
   const rest = Object.entries(structured).filter(([k]) => !["clinician_role", "setting", "patient", "presenting_complaint"].includes(k));
   for (const [k, v] of rest) parts.push(`${humanize(k)}: ${text(v)}`);
@@ -183,7 +190,9 @@ function tasksFrom(instructions: unknown): { lead: string; tasks: string[]; minu
     } else lead = s.trim();
   };
   const taskLine = (t: unknown) =>
-    isObj(t) ? `${text(t.task ?? t.description ?? t)}${t.duration_minutes ? ` (${t.duration_minutes} minute${t.duration_minutes === 1 ? "" : "s"})` : ""}` : text(t);
+    isObj(t)
+      ? `${text(t.task ?? t.description ?? t)}${t.duration_minutes ? ` (${t.duration_minutes} minute${t.duration_minutes === 1 ? "" : "s"})` : ""}`
+      : text(t);
 
   const v = parse(instructions);
   if (typeof v === "string") fromString(v);
@@ -203,7 +212,8 @@ function tasksFrom(instructions: unknown): { lead: string; tasks: string[]; minu
 }
 
 function demographics(brief: string, pre: unknown) {
-  const structured = isObj(pre) && isObj(pre.pre_reading_material) && isObj(pre.pre_reading_material.patient) ? pre.pre_reading_material.patient : null;
+  const structured =
+    isObj(pre) && isObj(pre.pre_reading_material) && isObj(pre.pre_reading_material.patient) ? pre.pre_reading_material.patient : null;
   const age = Number(structured?.age ?? /(\d{1,3})[- ]year[- ]old/i.exec(brief)?.[1]) || null;
   const g = String(structured?.gender ?? "").toLowerCase();
   const sexText = `${g} ${brief}`.toLowerCase();
@@ -260,9 +270,11 @@ function domainFor(path: string[], examiner: boolean): RubricItem["domain"] {
 }
 
 function examinerPrompt(key: string, node: Record<string, unknown>): string {
-  for (const k of ["question", "prompt"]) if (typeof node[k] === "string" && (node[k] as string).trim().length >= 5) return (node[k] as string).trim();
+  for (const k of ["question", "prompt"])
+    if (typeof node[k] === "string" && (node[k] as string).trim().length >= 5) return (node[k] as string).trim();
   const answers = Array.isArray(node.answers) ? node.answers.length : 0;
-  if (/differential/.test(key)) return answers ? `What are your top ${answers} differential diagnoses, and why?` : "What are your differential diagnoses, and why?";
+  if (/differential/.test(key))
+    return answers ? `What are your top ${answers} differential diagnoses, and why?` : "What are your differential diagnoses, and why?";
   if (/provisional|diagnos/.test(key)) return "What is your provisional diagnosis, and why?";
   if (/investigat/.test(key)) return "What investigations would you order, and why?";
   if (/manage|plan|follow/.test(key)) return "How would you manage this patient, and what follow-up would you arrange?";
@@ -279,7 +291,9 @@ function modelAnswer(node: Record<string, unknown>): string[] {
         if (isObj(a) && (a.diagnosis || a.system)) {
           const head = text(a.diagnosis ?? a.system);
           const rest = Object.entries(a).filter(([ak]) => ak !== "diagnosis" && ak !== "system");
-          lines.push(`${WRAPPERS.has(k) ? "" : `${humanize(k)}: `}${head}${rest.length ? ` (${rest.map(([, rv]) => text(rv)).join("; ")})` : ""}`);
+          lines.push(
+            `${WRAPPERS.has(k) ? "" : `${humanize(k)}: `}${head}${rest.length ? ` (${rest.map(([, rv]) => text(rv)).join("; ")})` : ""}`,
+          );
         } else lines.push(`${WRAPPERS.has(k) ? "" : `${humanize(k)}: `}${text(a)}`);
       }
     } else if (text(v)) lines.push(`${humanize(k)}: ${text(v)}`);
@@ -321,11 +335,13 @@ export function convertAuthorCase(row: AuthorRow, specialties: Set<string>): Imp
   const facts = factsFrom(profile);
   if (facts.length < 5) gaps.push(`patient.profile: only ${facts.length} question/answer pairs found (need at least 5).`);
   const rubricQa = collectQa(rubricJson);
-  const openingQa = collectQa(profile).find((q) => q.path.some((p) => p.includes("opening"))) ?? rubricQa.find((q) => q.path.some((p) => p.includes("opening")));
+  const openingQa =
+    collectQa(profile).find((q) => q.path.some((p) => p.includes("opening"))) ??
+    rubricQa.find((q) => q.path.some((p) => p.includes("opening")));
   if (!openingQa) gaps.push("No opening statement (an opening_statement question/answer) for the patient.");
   const who = demographics(brief, pre);
   who.occupation ??= collectQa(profile).find((q) => q.path.some((p) => /occupation|job|work/.test(p)))?.answer ?? null;
-  if (!who.age) gaps.push("Patient age not found in the pre-reading (e.g. \"a 63-year-old man\").");
+  if (!who.age) gaps.push('Patient age not found in the pre-reading (e.g. "a 63-year-old man").');
   if (!who.sex) gaps.push("Patient sex not found in the pre-reading.");
   const name = (row["patient.name"] ?? "").trim();
   if (!name) gaps.push("patient.name is empty.");
@@ -355,7 +371,15 @@ export function convertAuthorCase(row: AuthorRow, specialties: Set<string>): Imp
         key,
         prompt: examinerPrompt(key, s.node),
         model_answer: answer.length ? answer : ["(no model answer)"],
-        ...(image ? { media: { path: image, alt: typeof s.node.image_alt === "string" ? s.node.image_alt : `Image for: ${label}`, caption: typeof s.node.image_caption === "string" ? s.node.image_caption : undefined } } : {}),
+        ...(image
+          ? {
+              media: {
+                path: image,
+                alt: typeof s.node.image_alt === "string" ? s.node.image_alt : `Image for: ${label}`,
+                caption: typeof s.node.image_caption === "string" ? s.node.image_caption : undefined,
+              },
+            }
+          : {}),
       });
       rubricItems.push({
         key,
@@ -367,7 +391,10 @@ export function convertAuthorCase(row: AuthorRow, specialties: Set<string>): Imp
         is_critical: false,
       });
       if (/differential/.test(key) && Array.isArray(s.node.answers)) {
-        differentials = s.node.answers.filter(isObj).map((a) => ({ dx: text(a.diagnosis), why: text(a.rationale) })).filter((d) => d.dx);
+        differentials = s.node.answers
+          .filter(isObj)
+          .map((a) => ({ dx: text(a.diagnosis), why: text(a.rationale) }))
+          .filter((d) => d.dx);
       }
       if (/investigat/.test(key)) investigations = answer;
     } else {
@@ -381,7 +408,9 @@ export function convertAuthorCase(row: AuthorRow, specialties: Set<string>): Imp
       const description = [
         expected,
         ...criteria,
-        listed.length ? `Expected questions: ${listed.join(" / ")}${asks.length > listed.length ? ` (and ${asks.length - listed.length} more)` : ""}` : "",
+        listed.length
+          ? `Expected questions: ${listed.join(" / ")}${asks.length > listed.length ? ` (and ${asks.length - listed.length} more)` : ""}`
+          : "",
         extras.length ? `Also covers: ${extras.join(", ")}` : "",
       ].filter(Boolean);
       rubricItems.push({
@@ -407,10 +436,19 @@ export function convertAuthorCase(row: AuthorRow, specialties: Set<string>): Imp
 
   // Clinical answers: an explicit "diagnosis" in the rubric, else the leading differential.
   const stated = isObj(rubricJson)
-    ? [rubricJson, ...Object.values(rubricJson).filter(isObj)].map((o) => o.diagnosis ?? o.final_diagnosis).find((d): d is string => typeof d === "string" && d.trim() !== "")
+    ? [rubricJson, ...Object.values(rubricJson).filter(isObj)]
+        .map((o) => o.diagnosis ?? o.final_diagnosis)
+        .find((d): d is string => typeof d === "string" && d.trim() !== "")
     : undefined;
-  if (stated) differentials = [{ dx: stated.trim(), why: "Stated diagnosis." }, ...differentials.filter((d) => d.dx.toLowerCase() !== stated.trim().toLowerCase())];
-  if (!differentials.length) gaps.push('No diagnosis: add "diagnosis": "…" to the Marking Rubric, or a task_2 top_differentials section with answers, so the examiner knows the answer and the patient can be checked for leaks.');
+  if (stated)
+    differentials = [
+      { dx: stated.trim(), why: "Stated diagnosis." },
+      ...differentials.filter((d) => d.dx.toLowerCase() !== stated.trim().toLowerCase()),
+    ];
+  if (!differentials.length)
+    gaps.push(
+      'No diagnosis: add "diagnosis": "…" to the Marking Rubric, or a task_2 top_differentials section with answers, so the examiner knows the answer and the patient can be checked for leaks.',
+    );
   else if (!stated) assumptions.push(`Diagnosis taken as the first differential: "${differentials[0].dx}".`);
 
   const known = specialtyFor(title, brief, specialties);
@@ -461,17 +499,23 @@ export function convertAuthorCase(row: AuthorRow, specialties: Set<string>): Imp
       clinical: {
         diagnosis: differentials[0].dx,
         diagnosis_synonyms: [],
-        differentials: differentials.map((d, i) => ({ dx: d.dx, likelihood: i === 0 ? "leading" : "likely", discriminating_features: d.why || "See model answer." })),
+        differentials: differentials.map((d, i) => ({
+          dx: d.dx,
+          likelihood: i === 0 ? "leading" : "likely",
+          discriminating_features: d.why || "See model answer.",
+        })),
         red_flags: [],
         expected_investigations: investigations,
         expected_management: [],
       },
     };
     const parsed = caseContentSchema.safeParse(draft);
-    if (!parsed.success) gaps.push(`Case format check failed: ${parsed.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; ")}`);
+    if (!parsed.success)
+      gaps.push(`Case format check failed: ${parsed.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; ")}`);
     else {
       const leaks = findLeaks(toPatientView(parsed.data), leakTerms(parsed.data));
-      if (leaks.length) gaps.push(`The patient's answers mention the diagnosis (${leaks.join(", ")}); reword them so the patient can't give it away.`);
+      if (leaks.length)
+        gaps.push(`The patient's answers mention the diagnosis (${leaks.join(", ")}); reword them so the patient can't give it away.`);
       else content = parsed.data;
     }
   }

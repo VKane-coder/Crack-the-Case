@@ -6,7 +6,27 @@ import { knownFactIds, type PatientLlm } from "./llm";
 
 type Fact = { id: string; content: string };
 
-const STOP = new Set(["about", "there", "their", "which", "would", "could", "have", "been", "with", "your", "what", "when", "that", "this", "does", "doing", "tell", "more", "anything"]);
+const STOP = new Set([
+  "about",
+  "there",
+  "their",
+  "which",
+  "would",
+  "could",
+  "have",
+  "been",
+  "with",
+  "your",
+  "what",
+  "when",
+  "that",
+  "this",
+  "does",
+  "doing",
+  "tell",
+  "more",
+  "anything",
+]);
 
 const words = (s: string) =>
   new Set(

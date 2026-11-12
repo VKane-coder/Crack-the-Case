@@ -74,5 +74,7 @@ export const claudeExaminerLlm: ExaminerLlm = {
 /** The failed call attached to an error thrown above, for cost logging. */
 export function failedCall(err: unknown, model: string): ExaminerCall {
   const call = (err as { call?: ExaminerCall }).call;
-  return call ?? { model, usage: NO_USAGE, latencyMs: 0, status: "error", error: err instanceof Error ? err.message.slice(0, 300) : String(err) };
+  return (
+    call ?? { model, usage: NO_USAGE, latencyMs: 0, status: "error", error: err instanceof Error ? err.message.slice(0, 300) : String(err) }
+  );
 }
