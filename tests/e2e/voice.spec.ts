@@ -66,9 +66,16 @@ test("push-to-talk sends speech to the patient and the reply comes back with aud
   await expect(log).toContainText("No allergies that I know of");
   expect(second).toContain('"type":"audio"');
 
-  // Patient voice off: text only.
+  // With the voice on, the brief and task stand in for the conversation, as on the door of a real OSCE
+  // station; the replies stay readable by screen readers.
+  await expect(page.getByText("Candidate brief", { exact: true })).toBeVisible();
+  await expect(log).toHaveClass(/sr-only/);
+
+  // Patient voice off: text only, so the replies are shown again.
   await page.getByRole("button", { name: /Patient voice on/ }).click();
   await expect(page.getByRole("button", { name: /Patient voice off/ })).toBeVisible();
+  await expect(log).not.toHaveClass(/sr-only/);
+  await expect(page.getByText("Candidate brief", { exact: true })).toBeHidden();
   await page.getByText("listening").waitFor();
   const third = await say(page, "Do you take any medicines, like thyroxine?", "button");
   expect(third).not.toContain('"type":"audio"');
